@@ -1,0 +1,9 @@
+body {
+  background-color: #FF0000; /* Red */
+}
+h1 {
+  color: hsl(240, 100%, 50%); /* A shade of blue */
+}
+p {
+  color: blue;
+}
