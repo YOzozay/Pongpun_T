@@ -1,246 +1,215 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { CheckCircle, Circle, Car, Calendar, DollarSign, TrendingUp, AlertCircle, Check } from 'lucide-react';
-
-const App = () => {
-  // ข้อมูลพื้นฐาน
-  const TOTAL_INSTALLMENTS = 72;
-  const AMOUNT_PER_MONTH = 12220;
-  const TOTAL_LOAN = 879840;
-  const START_DATE = new Date('2024-01-20'); // เริ่มงวดแรก 20 ม.ค. 67 ตามไฟล์ CSV
-
-  // สร้างข้อมูลจำลองเริ่มต้น (งวด 1-25 จ่ายแล้ว, 26 รอชำระ)
-  const generateInitialData = () => {
-    const data = [];
-    for (let i = 1; i <= TOTAL_INSTALLMENTS; i++) {
-      const dueDate = new Date(START_DATE);
-      dueDate.setMonth(START_DATE.getMonth() + (i - 1));
-
-      // กำหนดสถานะเริ่มต้นจากข้อมูลผู้ใช้
-      let status = 'pending';
-      if (i <= 25) status = 'paid';
-      
-      data.push({
-        id: i,
-        installmentNo: i,
-        dueDate: dueDate,
-        amount: AMOUNT_PER_MONTH,
-        status: status, // 'paid' or 'pending'
-        isCurrent: i === 26
-      });
-    }
-    return data;
-  };
-
-  const [installments, setInstallments] = useState(generateInitialData());
-
-  // ฟังก์ชันแปลงวันที่เป็นภาษาไทย
-  const formatDateTH = (date) => {
-    return date.toLocaleDateString('th-TH', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  // ฟังก์ชันจัดรูปแบบเงิน
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('th-TH', {
-      style: 'currency',
-      currency: 'THB',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-
-  // คำนวณยอดรวมต่างๆ
-  const stats = useMemo(() => {
-    const paidCount = installments.filter(i => i.status === 'paid').length;
-    const paidAmount = paidCount * AMOUNT_PER_MONTH;
-    const remainingAmount = TOTAL_LOAN - paidAmount;
-    const progress = (paidAmount / TOTAL_LOAN) * 100;
-    
-    // หางวดถัดไปที่ต้องจ่าย
-    const nextDue = installments.find(i => i.status === 'pending');
-
-    return {
-      paidCount,
-      paidAmount,
-      remainingAmount,
-      progress,
-      nextDue
-    };
-  }, [installments]);
-
-  // ฟังก์ชันเปลี่ยนสถานะการจ่ายเงิน
-  const togglePayment = (id) => {
-    setInstallments(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, status: item.status === 'paid' ? 'pending' : 'paid' };
-      }
-      return item;
-    }));
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white shadow-lg sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
-              <Car className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold leading-tight">Car Loan Tracker</h1>
-              <p className="text-xs text-blue-200">ติดตามค่างวดรถยนต์</p>
-            </div>
-          </div>
-          <div className="text-right hidden sm:block">
-            <p className="text-xs opacity-80">ยอดกู้รวม</p>
-            <p className="font-bold">{formatCurrency(TOTAL_LOAN)}</p>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>บันทึกค่างวดรถ 5ขฉ6150</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            background-color: #f1f5f9; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        .k-gradient { 
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); 
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Card 1: Paid */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <CheckCircle className="w-16 h-16 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500 font-medium mb-1">ชำระแล้ว</p>
-              <h2 className="text-3xl font-bold text-emerald-600">{formatCurrency(stats.paidAmount)}</h2>
-            </div>
-            <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 bg-emerald-50 w-fit px-3 py-1 rounded-full">
-              <Check className="w-4 h-4 text-emerald-600" />
-              <span>{stats.paidCount} / {TOTAL_INSTALLMENTS} งวด</span>
-            </div>
-          </div>
+        /* สไตล์สำหรับการแสดงผลบน PC */
+        @media (min-width: 1024px) {
+            .main-container {
+                display: grid;
+                grid-template-columns: 400px 1fr;
+                gap: 2rem;
+                padding: 2rem;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            .sidebar {
+                position: sticky;
+                top: 2rem;
+                height: calc(100vh - 4rem);
+            }
+            .content-area {
+                height: calc(100vh - 4rem);
+                overflow-y: auto;
+                padding-right: 1rem;
+            }
+            .mobile-nav { display: none; }
+        }
 
-          {/* Card 2: Remaining */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4 opacity-10">
-              <DollarSign className="w-16 h-16 text-rose-500" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500 font-medium mb-1">คงเหลือ</p>
-              <h2 className="text-3xl font-bold text-rose-600">{formatCurrency(stats.remainingAmount)}</h2>
-            </div>
-            <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 bg-rose-50 w-fit px-3 py-1 rounded-full">
-              <TrendingUp className="w-4 h-4 text-rose-600" />
-              <span>อีก {TOTAL_INSTALLMENTS - stats.paidCount} งวด</span>
-            </div>
-          </div>
+        /* สไตล์สำหรับมือถือ */
+        @media (max-width: 1023px) {
+            .main-container {
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+            }
+            .sidebar { width: 100%; }
+            .content-area { padding: 1.5rem; flex-grow: 1; }
+        }
+    </style>
+</head>
+<body class="text-slate-800">
 
-           {/* Card 3: Next Due */}
-           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 shadow-md text-white flex flex-col justify-between">
-            <div>
-              <p className="text-sm text-indigo-100 font-medium mb-1 flex items-center gap-1">
-                <Calendar className="w-4 h-4" /> กำหนดชำระงวดถัดไป
-              </p>
-              {stats.nextDue ? (
-                <>
-                  <h2 className="text-2xl font-bold mt-2">{formatDateTH(stats.nextDue.dueDate)}</h2>
-                  <p className="text-indigo-100 mt-1">งวดที่ {stats.nextDue.installmentNo}</p>
-                </>
-              ) : (
-                <div className="h-full flex items-center">
-                  <span className="text-xl font-bold">ผ่อนหมดแล้ว! 🎉</span>
-                </div>
-              )}
-            </div>
-            {stats.nextDue && (
-              <div className="mt-4 bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center">
-                <span className="font-bold">{formatCurrency(AMOUNT_PER_MONTH)}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Progress Bar Section */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-          <div className="flex justify-between items-end mb-2">
-            <div>
-              <h3 className="font-bold text-slate-800 text-lg">ความคืบหน้าการผ่อนชำระ</h3>
-              <p className="text-sm text-slate-500">คุณเดินทางมาได้ {stats.progress.toFixed(1)}% แล้ว</p>
-            </div>
-            <span className="text-2xl font-bold text-blue-600">{stats.progress.toFixed(0)}%</span>
-          </div>
-          <div className="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-              style={{ width: `${stats.progress}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* Installment List */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-            <h3 className="font-bold text-slate-800">ตารางการผ่อน ({TOTAL_INSTALLMENTS} งวด)</h3>
-          </div>
-          
-          <div className="divide-y divide-slate-100">
-            {installments.map((item) => (
-              <div 
-                key={item.id} 
-                className={`group flex items-center justify-between p-4 hover:bg-slate-50 transition-colors ${item.isCurrent && item.status !== 'paid' ? 'bg-amber-50 hover:bg-amber-100' : ''}`}
-              >
-                {/* Left: Info */}
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm
-                    ${item.status === 'paid' 
-                      ? 'bg-emerald-100 text-emerald-700' 
-                      : (item.isCurrent ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500')}
-                  `}>
-                    {item.installmentNo}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className={`font-semibold ${item.status === 'paid' ? 'text-slate-600' : 'text-slate-900'}`}>
-                        {formatDateTH(item.dueDate)}
-                      </p>
-                      {item.isCurrent && item.status !== 'paid' && (
-                        <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full">
-                          ปัจจุบัน
-                        </span>
-                      )}
+    <div class="main-container">
+        
+        <!-- ส่วนที่ 1: แผงควบคุม (Sidebar บน PC / Header บน Mobile) -->
+        <div class="sidebar">
+            <div class="k-gradient text-white p-8 rounded-[2.5rem] shadow-2xl h-full flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h1 class="text-2xl font-black italic tracking-tighter uppercase">K Leasing</h1>
+                            <p class="text-green-100 text-[10px] font-bold tracking-widest uppercase mt-1">ทะเบียน 5ขฉ6150</p>
+                        </div>
+                        <button onclick="resetToDefault()" class="text-[10px] bg-white/10 px-3 py-1 rounded-full hover:bg-white/20 transition-all">รีเซ็ต</button>
                     </div>
-                    <p className="text-sm text-slate-500">{formatCurrency(item.amount)}</p>
-                  </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <p class="text-xs font-bold text-green-200 uppercase tracking-widest mb-1">ยอดค่าเช่าซื้อคงเหลือ</p>
+                            <p id="remain-ui" class="text-4xl font-black">฿720,980.00</p>
+                        </div>
+
+                        <div class="bg-black/10 p-5 rounded-3xl backdrop-blur-md border border-white/5">
+                            <div class="flex justify-between items-end mb-2">
+                                <span class="text-xs font-bold text-green-100">ความคืบหน้าการผ่อน</span>
+                                <span id="pct-ui" class="text-xl font-black text-yellow-400">34%</span>
+                            </div>
+                            <div class="w-full bg-green-900/40 rounded-full h-2 overflow-hidden">
+                                <div id="bar-ui" class="bg-yellow-400 h-full transition-all duration-1000" style="width: 34%"></div>
+                            </div>
+                            <div class="flex justify-between mt-3 text-[10px] font-bold text-green-200">
+                                <span id="count-ui">จ่ายแล้ว 25 งวด</span>
+                                <span>ทั้งหมด 72 งวด</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Right: Action */}
-                <button
-                  onClick={() => togglePayment(item.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 border
-                    ${item.status === 'paid'
-                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-emerald-200'
-                      : 'bg-white border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'}
-                  `}
-                >
-                  {item.status === 'paid' ? (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      <span className="hidden sm:inline font-medium">จ่ายแล้ว</span>
-                    </>
-                  ) : (
-                    <>
-                      <Circle className="w-5 h-5" />
-                      <span className="hidden sm:inline">รอชำระ</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
+                <!-- งวดถัดไป (แสดงใน Sidebar สำหรับ PC) -->
+                <div class="mt-8 bg-white text-slate-800 p-5 rounded-3xl shadow-lg border border-white">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+                        <span id="next-label" class="text-[10px] font-black uppercase text-slate-400">งวดถัดไปที่ 26</span>
+                    </div>
+                    <h2 id="next-date-ui" class="text-2xl font-black italic">20 ก.พ. 2569</h2>
+                    <p class="text-xs font-bold text-slate-400 mt-1">ยอดชำระ: ฿12,220.01</p>
+                    <button id="pay-btn" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-green-100">
+                        ยืนยันชำระงวดนี้
+                    </button>
+                </div>
+            </div>
         </div>
-      </main>
-    </div>
-  );
-};
 
-export default App;
+        <!-- ส่วนที่ 2: รายการค่างวด (Content Area) -->
+        <div class="content-area custom-scroll">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-black flex items-center gap-2">
+                    <span class="w-2 h-6 k-gradient rounded-full"></span>
+                    ไทม์ไลน์การจ่ายค่างวด
+                </h3>
+                <div class="text-[10px] font-bold bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100 uppercase tracking-widest text-slate-400">
+                    72 งวด • 12,220.01 บาท/งวด
+                </div>
+            </div>
+
+            <div id="list-ui" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20 lg:pb-0">
+                <!-- รายการจะแสดงตรงนี้ -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Mobile Navigation (เฉพาะมือถือ) -->
+    <div class="mobile-nav fixed bottom-6 left-6 right-6">
+        <div class="glass-card shadow-2xl rounded-[2rem] p-4 flex justify-around items-center border border-white">
+            <div class="flex flex-col items-center text-green-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                <span class="text-[9px] font-black uppercase mt-1">หน้าหลัก</span>
+            </div>
+            <div onclick="window.print()" class="flex flex-col items-center text-slate-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                <span class="text-[9px] font-black uppercase mt-1">พิมพ์</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ข้อมูลอ้างอิงจากสลิป (18 ก.พ. 2569)
+        const TOTAL_MONTHS = 72;
+        const MONTHLY_PAY = 12220.01;
+        const TOTAL_PRICE = 879840.72; // (12220.01 * 72)
+        const START_DATE = new Date(2024, 0, 20); // งวดที่ 1 คือ 20 ม.ค. 2567
+        const STORAGE_KEY = 'car_loan_data_v2';
+
+        let paidArray = [];
+
+        function init() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                paidArray = JSON.parse(saved);
+            } else {
+                // ถ้าเปิดครั้งแรก ให้ติ๊กงวด 1-25 ว่าจ่ายแล้ว (เพราะงวดถัดไปคือ 26)
+                paidArray = Array.from({length: 25}, (_, i) => i + 1);
+                save();
+            }
+            render();
+        }
+
+        function save() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(paidArray));
+        }
+
+        function toggle(num) {
+            if (paidArray.includes(num)) {
+                paidArray = paidArray.filter(i => i !== num);
+            } else {
+                paidArray.push(num);
+                paidArray.sort((a,b) => a-b);
+            }
+            save();
+            render();
+        }
+
+        function resetToDefault() {
+            if(confirm('ต้องการรีเซ็ตกลับไปเป็นงวดที่ 26 ใช่หรือไม่?')) {
+                paidArray = Array.from({length: 25}, (_, i) => i + 1);
+                save();
+                render();
+            }
+        }
+
+        function getThaiDate(num) {
+            const d = new Date(START_DATE);
+            d.setMonth(d.getMonth() + (num - 1));
+            return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function render() {
+            const list = document.getElementById('list-ui');
+            list.innerHTML = '';
+            let nextToPay = null;
+
+            for (let i = 1; i <= TOTAL_MONTHS; i++) {
+                const isPaid = paidArray.includes(i);
+                if (!isPaid && !nextToPay) nextToPay = i;
+
+                const card = document.createElement('div');
+                card.className = `glass-card p-4 rounded-[1.5rem] flex items-center justify-between border-2 transition-all cursor-pointer ${
+                    isPaid ? 'border-green-100 opacity-60' : 'border-white shadow-sm hover:border-green-400'
+                }`;
+                card.onclick = () => toggle(i);
+                
+                card.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl flex items-center j
