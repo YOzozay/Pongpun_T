@@ -1,227 +1,214 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>บันทึกค่างวดรถ 5ขฉ6150</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-auth-compat.js"></script>
-    <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
-        .k-gradient { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); }
-        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
-        .animate-pulse-soft { animation: pulse-soft 2s infinite; }
-    </style>
-</head>
-<body class="max-w-md mx-auto min-h-screen bg-slate-50 flex flex-col relative overflow-hidden shadow-2xl">
+import React, { useState, useEffect } from 'react';
+import { 
+  CheckCircle2, 
+  Circle, 
+  Car, 
+  Wallet, 
+  Calendar, 
+  BarChart3, 
+  ChevronRight,
+  ShieldCheck,
+  TrendingUp,
+  Clock,
+  ArrowUpRight
+} from 'lucide-react';
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center">
-        <div class="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-4 text-slate-500 font-bold animate-pulse">กำลังซิงค์ข้อมูล Cloud...</p>
-    </div>
+const App = () => {
+  // ข้อมูลจากสลิปผู้ใช้
+  const TOTAL_AMOUNT = 879840;
+  const TOTAL_INSTALLMENTS = 72;
+  const MONTHLY_PAYMENT = 12220;
+  const CURRENT_INSTALLMENT_INDEX = 26; // งวดปัจจุบันจากสลิป
 
-    <!-- Top Header (Design from KLeasing) -->
-    <div class="k-gradient text-white px-6 pt-12 pb-14 rounded-b-[3rem] shadow-xl shrink-0 relative">
-        <div class="flex justify-between items-start mb-8">
-            <div>
-                <h1 class="text-2xl font-black italic tracking-tighter">K LEASING</h1>
-                <div class="flex items-center gap-2 mt-1">
-                    <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
-                    <p class="text-green-100 text-[10px] font-bold tracking-widest uppercase">ทะเบียน 5ขฉ6150 • SHARED</p>
-                </div>
-            </div>
-            <button onclick="shareApp()" class="p-2.5 bg-white/10 rounded-2xl backdrop-blur-md border border-white/10 active:scale-90 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-            </button>
-        </div>
+  const [installments, setInstallments] = useState([]);
+  const [isDark, setIsDark] = useState(false);
 
-        <div class="grid grid-cols-2 gap-6 bg-black/10 p-5 rounded-3xl backdrop-blur-sm">
-            <div class="text-center border-r border-white/10">
-                <p class="text-[10px] font-bold text-green-200 uppercase tracking-widest">จ่ายแล้ว (%)</p>
-                <p id="pct-ui" class="text-4xl font-black mt-1">34%</p>
-            </div>
-            <div class="pl-2">
-                <p class="text-[10px] font-bold text-green-200 uppercase tracking-widest">ยอดคงเหลือรวม</p>
-                <p id="remain-ui" class="text-xl font-bold mt-1">฿720,980</p>
-                <div class="w-full bg-green-900/40 rounded-full h-1.5 mt-2.5 overflow-hidden">
-                    <div id="bar-ui" class="bg-yellow-400 h-full transition-all duration-1000 shadow-[0_0_10px_rgba(250,204,21,0.5)]" style="width: 34%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+  useEffect(() => {
+    // ตรวจสอบ Dark Mode ของระบบ
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDark(mediaQuery.matches);
+    const handler = (e) => setIsDark(e.matches);
+    mediaQuery.addEventListener('change', handler);
 
-    <!-- Floating Next Due Card -->
-    <div class="px-6 -mt-8 shrink-0 z-10">
-        <div id="next-card" class="bg-white p-5 rounded-[2rem] shadow-2xl shadow-green-900/10 border border-white flex justify-between items-center relative overflow-hidden transition-all active:scale-[0.98]">
-            <div class="absolute top-0 left-0 w-2 h-full bg-orange-500 shadow-[2px_0_10px_rgba(249,115,22,0.2)]"></div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="px-2 py-0.5 bg-orange-100 text-orange-600 text-[9px] font-black rounded-md uppercase tracking-tighter">งวดถัดไป</span>
-                    <span id="next-num-label" class="text-[10px] font-bold text-slate-400">งวดที่ 26</span>
-                </div>
-                <h2 id="next-date-ui" class="text-xl font-bold text-slate-800 mt-1 italic">20 ก.พ. 2569</h2>
-                <p class="text-[10px] text-slate-400 font-bold">ยอดที่ต้องชำระ: ฿12,220.01</p>
-            </div>
-            <button id="pay-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-xl shadow-green-200 active:translate-y-0.5 transition-all">
-                ชำระแล้ว
-            </button>
-        </div>
-    </div>
+    // สร้างข้อมูล 72 งวด
+    const data = Array.from({ length: TOTAL_INSTALLMENTS }, (_, i) => ({
+      id: i + 1,
+      amount: MONTHLY_PAYMENT,
+      isPaid: i < CURRENT_INSTALLMENT_INDEX - 1, // งวดก่อนหน้าจ่ายแล้ว
+      dueDate: 20/${String((i % 12) + 1).padStart(2, '0')}/${2567 + Math.floor(i / 12)}
+    }));
+    setInstallments(data);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
 
-    <!-- History List -->
-    <div class="px-6 mt-8 flex-1 flex flex-col min-h-0">
-        <div class="flex justify-between items-center mb-5 px-1">
-            <div class="flex items-center gap-2">
-                <div class="w-1.5 h-4 bg-green-500 rounded-full"></div>
-                <h3 class="font-bold text-slate-800 text-sm">ตารางผ่อนชำระ</h3>
-            </div>
-            <span id="count-ui" class="text-[10px] font-black text-slate-500 bg-slate-200/50 px-3 py-1 rounded-full tracking-tighter uppercase">25 / 72 งวด</span>
-        </div>
+  const togglePaid = (id) => {
+    setInstallments(prev => prev.map(item => 
+      item.id === id ? { ...item, isPaid: !item.isPaid } : item
+    ));
+  };
+
+  const paidCount = installments.filter(i => i.isPaid).length;
+  const progressPercent = (paidCount / TOTAL_INSTALLMENTS) * 100;
+  const totalPaid = paidCount * MONTHLY_PAYMENT;
+  const remainingAmount = TOTAL_AMOUNT - totalPaid;
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500 pb-24 font-sans text-slate-900 dark:text-slate-100">
+      {/* Top Background Gradient */}
+      <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-br from-emerald-500 to-teal-700 dark:from-emerald-900 dark:to-slate-950 rounded-b-[3rem] shadow-2xl" />
+
+      {/* Main Content */}
+      <div className="relative px-5 pt-8 max-w-md mx-auto">
         
-        <div id="list-ui" class="flex-1 overflow-y-auto space-y-3 pr-1 custom-scroll pb-28">
-            <!-- List Items -->
-        </div>
-    </div>
-
-    <!-- Modern Tab Bar -->
-    <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-2xl border-t border-slate-100 p-5 flex justify-around safe-bottom z-50 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-        <div class="flex flex-col items-center gap-1.5 text-green-600">
-            <div class="p-1 bg-green-50 rounded-xl">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30">
+              <Car size={28} className="text-white" />
             </div>
-            <span class="text-[9px] font-black uppercase tracking-widest">ค่างวดรถ</span>
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight">สินเชื่อรถยนต์</h1>
+              <p className="text-emerald-100 text-xs opacity-80">ทะเบียน 5ขฉ6150</p>
+            </div>
+          </div>
+          <div className="p-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
+            <ShieldCheck size={20} className="text-emerald-200" />
+          </div>
         </div>
-        <div onclick="shareApp()" class="flex flex-col items-center gap-1.5 text-slate-300 active:text-green-400 transition-all cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-            <span class="text-[9px] font-black uppercase tracking-widest">แชร์ต่อ</span>
+
+        {/* Dashboard Card */}
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-[2.5rem] p-6 shadow-xl border border-white dark:border-slate-800 mb-6">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">ยอดคงเหลือรวม</p>
+              <h2 className="text-3xl font-black tracking-tighter mt-1 text-slate-800 dark:text-white">
+                ฿{remainingAmount.toLocaleString()}
+              </h2>
+            </div>
+            <div className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-2 rounded-xl">
+              <TrendingUp size={20} />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-slate-400">
+              <span>ความคืบหน้าการผ่อน</span>
+              <span className="text-emerald-500">{progressPercent.toFixed(1)}%</span>
+            </div>
+            <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full p-1 shadow-inner">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+                style={{ width: ${progressPercent}% }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="border-r border-slate-100 dark:border-slate-800">
+                <p className="text-[10px] text-slate-400 uppercase font-bold">จ่ายแล้ว</p>
+                <p className="text-sm font-bold">{paidCount} / 72 งวด</p>
+              </div>
+              <div className="pl-2">
+                <p className="text-[10px] text-slate-400 uppercase font-bold">เงินต้นที่จ่าย</p>
+                <p className="text-sm font-bold text-emerald-500">฿{totalPaid.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
         </div>
-    </div>
 
-    <script>
-        // --- 1. CONFIG (From Image Data) ---
-        const TOTAL_MONTHS = 72;
-        const MONTHLY_PAY = 12220.01;
-        const TOTAL_PRICE = 879840.72; // (12220.01 * 72)
-        const START_DATE = new Date(2024, 0, 20); // Jan 20, 2024
-        const APP_ID = "pongpun-car-shared-v1";
+        {/* Quick Info */}
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+            <div className="bg-amber-100 dark:bg-amber-500/10 p-2 rounded-xl text-amber-600">
+              <Clock size={18} />
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400 font-bold">งวดถัดไป</p>
+              <p className="text-xs font-bold">20 ก.พ. 69</p>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+            <div className="bg-blue-100 dark:bg-blue-500/10 p-2 rounded-xl text-blue-600">
+              <Wallet size={18} />
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400 font-bold">จำนวนเงิน</p>
+              <p className="text-xs font-bold">฿12,220.01</p>
+            </div>
+          </div>
+        </div>
 
-        // Firebase Setup
-        const firebaseConfig = JSON.parse('{"apiKey":"","authDomain":"project-default-id.firebaseapp.com","projectId":"project-default-id","storageBucket":"project-default-id.appspot.com","messagingSenderId":"000000000000","appId":"1:000000000000:web:000000000000"}');
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
+        {/* List Section */}
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-lg font-black dark:text-white flex items-center gap-2">
+            <Calendar size={20} className="text-emerald-500" />
+            ไทม์ไลน์การจ่าย
+          </h3>
+          <button className="text-xs font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors">
+            ดูทั้งหมด
+          </button>
+        </div>
 
-        let paidArray = [];
-        let nextToPay = null;
+        <div className="space-y-3">
+          {installments.map((item) => (
+            <div 
+              key={item.id}
+              onClick={() => togglePaid(item.id)}
+              className={`group flex items-center justify-between p-4 rounded-[2rem] border transition-all duration-300 cursor-pointer active:scale-95 ${
+                item.isPaid 
+                ? 'bg-white dark:bg-slate-900 border-emerald-100 dark:border-emerald-900/30 shadow-sm' 
+                : item.id === CURRENT_INSTALLMENT_INDEX 
+                  ? 'bg-emerald-500 text-white border-emerald-400 shadow-lg shadow-emerald-500/30' 
+                  : 'bg-slate-100/50 dark:bg-slate-900/50 border-transparent opacity-60'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-12 ${
+                  item.isPaid 
+                  ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600' 
+                  : item.id === CURRENT_INSTALLMENT_INDEX
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+                }`}>
+                  {item.isPaid ? <CheckCircle2 size={22} /> : <Circle size={22} />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${
+                      item.id === CURRENT_INSTALLMENT_INDEX ? 'text-emerald-100' : 'text-slate-400'
+                    }`}>
+                      งวดที่ {item.id}
+                    </span>
+                    {item.id === CURRENT_INSTALLMENT_INDEX && (
+                      <span className="flex h-2 w-2 rounded-full bg-white animate-pulse" />
+                    )}
+                  </div>
+                  <p className={`font-bold ${
+                    item.id === CURRENT_INSTALLMENT_INDEX ? 'text-white' : 'text-slate-700 dark:text-slate-200'
+                  }`}>
+                    {item.dueDate}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <p className={`font-black ${
+                    item.id === CURRENT_INSTALLMENT_INDEX ? 'text-white' : 'text-slate-800 dark:text-slate-200'
+                  }`}>
+                    ฿{item.amount.toLocaleString()}
+                  </p>
+                  <ArrowUpRight size={14} className={item.id === CURRENT_INSTALLMENT_INDEX ? 'text-white/50' : 'text-slate-300'} />
+                </div>
+                <p className={`text-[10px] font-medium ${
+                  item.id === CURRENT_INSTALLMENT_INDEX ? 'text-emerald-100' : 'text-slate-400'
+                }`}>
+                  {item.isPaid ? 'จ่ายสำเร็จ' : item.id === CURRENT_INSTALLMENT_INDEX ? 'รอดำเนินการ' : 'ยังไม่ถึงกำหนด'}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        // --- 2. CORE ENGINE ---
-        async function startApp() {
-            try {
-                await auth.signInAnonymously();
-                const docRef = db.doc(`artifacts/${APP_ID}/public/data/payments`);
-                
-                // Real-time Cloud Sync
-                docRef.onSnapshot((doc) => {
-                    if (doc.exists()) {
-                        paidArray = doc.data().paid || [];
-                    } else {
-                        // ตั้งค่าเริ่มต้น: งวดที่ 1-25 จ่ายแล้ว (ตามสลิปที่เริ่มงวด 26)
-                        paidArray = Array.from({length: 25}, (_, i) => i + 1);
-                        docRef.set({ paid: paidArray });
-                    }
-                    render();
-                    document.getElementById('loading-overlay').style.display = 'none';
-                });
-            } catch (err) {
-                console.error(err);
-                alert("การเชื่อมต่อฐานข้อมูลล้มเหลว");
-            }
-        }
-
-        async function togglePayment(num) {
-            const newList = paidArray.includes(num) 
-                ? paidArray.filter(i => i !== num) 
-                : [...paidArray, num];
-            
-            await db.doc(`artifacts/${APP_ID}/public/data/payments`).set({ paid: newList.sort((a,b) => a-b) });
-        }
-
-        function getThaiDate(num) {
-            const d = new Date(START_DATE);
-            d.setMonth(d.getMonth() + (num - 1));
-            return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-        }
-
-        function render() {
-            const list = document.getElementById('list-ui');
-            list.innerHTML = '';
-            nextToPay = null;
-
-            for (let i = 1; i <= TOTAL_MONTHS; i++) {
-                const isPaid = paidArray.includes(i);
-                if (!isPaid && !nextToPay) nextToPay = i;
-
-                const item = document.createElement('div');
-                item.className = `p-4 rounded-2xl flex items-center justify-between border transition-all active:scale-[0.98] cursor-pointer ${
-                    isPaid ? 'bg-green-50/40 border-green-100 opacity-60' : 'bg-white border-slate-100 shadow-sm'
-                }`;
-                item.onclick = () => togglePayment(i);
-                
-                item.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs ${
-                            isPaid ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-400'
-                        }">${i}</div>
-                        <div>
-                            <p class="text-[13px] font-bold ${isPaid ? 'text-slate-400 line-through' : 'text-slate-800'}">${getThaiDate(i)}</p>
-                            <p class="text-[10px] text-slate-400 font-bold tracking-tighter">ยอดชำระ: ฿12,220.01</p>
-                        </div>
-                    </div>
-                    ${isPaid ? '<svg class="w-6 h-6 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>' : '<div class="w-6 h-6 rounded-full border-2 border-slate-100"></div>'}
-                `;
-                list.appendChild(item);
-            }
-
-            // Dashboard Update
-            const count = paidArray.length;
-            const pct = Math.round((count / TOTAL_MONTHS) * 100);
-            const remainingPrice = TOTAL_PRICE - (count * MONTHLY_PAY);
-
-            document.getElementById('pct-ui').innerText = pct + '%';
-            document.getElementById('bar-ui').style.width = pct + '%';
-            document.getElementById('remain-ui').innerText = '฿' + remainingPrice.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('count-ui').innerText = `${count} / ${TOTAL_MONTHS} งวด`;
-            
-            if (nextToPay) {
-                document.getElementById('next-num-label').innerText = `งวดที่ ${nextToPay}`;
-                document.getElementById('next-date-ui').innerText = getThaiDate(nextToPay);
-                document.getElementById('pay-btn').onclick = (e) => { e.stopPropagation(); togglePayment(nextToPay); };
-                document.getElementById('next-card').style.display = 'flex';
-            } else {
-                document.getElementById('next-card').style.display = 'none';
-            }
-        }
-
-        function shareApp() {
-            const url = window.location.href;
-            if (navigator.share) {
-                navigator.share({ title: 'ตารางผ่อนรถ 5ขฉ6150', url: url });
-            } else {
-                navigator.clipboard.writeText(url);
-                alert('ก๊อปปี้ลิงก์แอปแล้ว! ส่งให้เพื่อนเปิดดูด้วยกันได้เลย');
-            }
-        }
-
-        startApp();
-    </script>
-</body>
-</html>
-
+      {/* Bottom Floating Menu */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm">
+        <div className="bg-slate-900/90 dark:bg-white/90 backdrop-blur-2xl rounded-full px-8 py-4 flex justify-between items-center shadow-2xl border border-white/20 dark:border-slate-800">
+          <div className="flex flex-col items-center gap-1 text-emerald-400 dark:text-
