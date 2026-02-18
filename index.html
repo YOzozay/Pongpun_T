@@ -1,199 +1,246 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Loan Tracker Premium</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        body { font-family: 'Anuphan', sans-serif; }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        .dark .glass-card {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .progress-glow {
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
-        }
-        @keyframes pulse-custom {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .animate-pulse-custom {
-            animation: pulse-custom 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-    </style>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-        }
-    </script>
-</head>
-<body class="bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
-    <div id="app" class="max-w-md mx-auto min-h-screen pb-28 relative">
-        <!-- Gradient Background -->
-        <div class="absolute top-0 left-0 right-0 h-72 bg-gradient-to-br from-emerald-500 to-teal-700 dark:from-emerald-900 dark:to-slate-950 rounded-b-[3rem] shadow-2xl"></div>
+import React, { useState, useMemo, useEffect } from 'react';
+import { CheckCircle, Circle, Car, Calendar, DollarSign, TrendingUp, AlertCircle, Check } from 'lucide-react';
 
-        <div class="relative px-5 pt-8">
-            <!-- Header -->
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30 text-white">
-                        <i data-lucide="car"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold text-white tracking-tight">สินเชื่อรถยนต์</h1>
-                        <p class="text-emerald-100 text-xs opacity-80">ทะเบียน 5ขฉ6150</p>
-                    </div>
+const App = () => {
+  // ข้อมูลพื้นฐาน
+  const TOTAL_INSTALLMENTS = 72;
+  const AMOUNT_PER_MONTH = 12220;
+  const TOTAL_LOAN = 879840;
+  const START_DATE = new Date('2024-01-20'); // เริ่มงวดแรก 20 ม.ค. 67 ตามไฟล์ CSV
+
+  // สร้างข้อมูลจำลองเริ่มต้น (งวด 1-25 จ่ายแล้ว, 26 รอชำระ)
+  const generateInitialData = () => {
+    const data = [];
+    for (let i = 1; i <= TOTAL_INSTALLMENTS; i++) {
+      const dueDate = new Date(START_DATE);
+      dueDate.setMonth(START_DATE.getMonth() + (i - 1));
+
+      // กำหนดสถานะเริ่มต้นจากข้อมูลผู้ใช้
+      let status = 'pending';
+      if (i <= 25) status = 'paid';
+      
+      data.push({
+        id: i,
+        installmentNo: i,
+        dueDate: dueDate,
+        amount: AMOUNT_PER_MONTH,
+        status: status, // 'paid' or 'pending'
+        isCurrent: i === 26
+      });
+    }
+    return data;
+  };
+
+  const [installments, setInstallments] = useState(generateInitialData());
+
+  // ฟังก์ชันแปลงวันที่เป็นภาษาไทย
+  const formatDateTH = (date) => {
+    return date.toLocaleDateString('th-TH', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  // ฟังก์ชันจัดรูปแบบเงิน
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('th-TH', {
+      style: 'currency',
+      currency: 'THB',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // คำนวณยอดรวมต่างๆ
+  const stats = useMemo(() => {
+    const paidCount = installments.filter(i => i.status === 'paid').length;
+    const paidAmount = paidCount * AMOUNT_PER_MONTH;
+    const remainingAmount = TOTAL_LOAN - paidAmount;
+    const progress = (paidAmount / TOTAL_LOAN) * 100;
+    
+    // หางวดถัดไปที่ต้องจ่าย
+    const nextDue = installments.find(i => i.status === 'pending');
+
+    return {
+      paidCount,
+      paidAmount,
+      remainingAmount,
+      progress,
+      nextDue
+    };
+  }, [installments]);
+
+  // ฟังก์ชันเปลี่ยนสถานะการจ่ายเงิน
+  const togglePayment = (id) => {
+    setInstallments(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, status: item.status === 'paid' ? 'pending' : 'paid' };
+      }
+      return item;
+    }));
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white shadow-lg sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
+              <Car className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold leading-tight">Car Loan Tracker</h1>
+              <p className="text-xs text-blue-200">ติดตามค่างวดรถยนต์</p>
+            </div>
+          </div>
+          <div className="text-right hidden sm:block">
+            <p className="text-xs opacity-80">ยอดกู้รวม</p>
+            <p className="font-bold">{formatCurrency(TOTAL_LOAN)}</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
+        
+        {/* Dashboard Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Card 1: Paid */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <CheckCircle className="w-16 h-16 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 font-medium mb-1">ชำระแล้ว</p>
+              <h2 className="text-3xl font-bold text-emerald-600">{formatCurrency(stats.paidAmount)}</h2>
+            </div>
+            <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 bg-emerald-50 w-fit px-3 py-1 rounded-full">
+              <Check className="w-4 h-4 text-emerald-600" />
+              <span>{stats.paidCount} / {TOTAL_INSTALLMENTS} งวด</span>
+            </div>
+          </div>
+
+          {/* Card 2: Remaining */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-10">
+              <DollarSign className="w-16 h-16 text-rose-500" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 font-medium mb-1">คงเหลือ</p>
+              <h2 className="text-3xl font-bold text-rose-600">{formatCurrency(stats.remainingAmount)}</h2>
+            </div>
+            <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 bg-rose-50 w-fit px-3 py-1 rounded-full">
+              <TrendingUp className="w-4 h-4 text-rose-600" />
+              <span>อีก {TOTAL_INSTALLMENTS - stats.paidCount} งวด</span>
+            </div>
+          </div>
+
+           {/* Card 3: Next Due */}
+           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 shadow-md text-white flex flex-col justify-between">
+            <div>
+              <p className="text-sm text-indigo-100 font-medium mb-1 flex items-center gap-1">
+                <Calendar className="w-4 h-4" /> กำหนดชำระงวดถัดไป
+              </p>
+              {stats.nextDue ? (
+                <>
+                  <h2 className="text-2xl font-bold mt-2">{formatDateTH(stats.nextDue.dueDate)}</h2>
+                  <p className="text-indigo-100 mt-1">งวดที่ {stats.nextDue.installmentNo}</p>
+                </>
+              ) : (
+                <div className="h-full flex items-center">
+                  <span className="text-xl font-bold">ผ่อนหมดแล้ว! 🎉</span>
                 </div>
-                <button onclick="toggleDarkMode()" class="p-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-emerald-200">
-                    <i data-lucide="moon" id="theme-icon"></i>
+              )}
+            </div>
+            {stats.nextDue && (
+              <div className="mt-4 bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center">
+                <span className="font-bold">{formatCurrency(AMOUNT_PER_MONTH)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Progress Bar Section */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div className="flex justify-between items-end mb-2">
+            <div>
+              <h3 className="font-bold text-slate-800 text-lg">ความคืบหน้าการผ่อนชำระ</h3>
+              <p className="text-sm text-slate-500">คุณเดินทางมาได้ {stats.progress.toFixed(1)}% แล้ว</p>
+            </div>
+            <span className="text-2xl font-bold text-blue-600">{stats.progress.toFixed(0)}%</span>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+              style={{ width: `${stats.progress}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Installment List */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-slate-800">ตารางการผ่อน ({TOTAL_INSTALLMENTS} งวด)</h3>
+          </div>
+          
+          <div className="divide-y divide-slate-100">
+            {installments.map((item) => (
+              <div 
+                key={item.id} 
+                className={`group flex items-center justify-between p-4 hover:bg-slate-50 transition-colors ${item.isCurrent && item.status !== 'paid' ? 'bg-amber-50 hover:bg-amber-100' : ''}`}
+              >
+                {/* Left: Info */}
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm
+                    ${item.status === 'paid' 
+                      ? 'bg-emerald-100 text-emerald-700' 
+                      : (item.isCurrent ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500')}
+                  `}>
+                    {item.installmentNo}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className={`font-semibold ${item.status === 'paid' ? 'text-slate-600' : 'text-slate-900'}`}>
+                        {formatDateTH(item.dueDate)}
+                      </p>
+                      {item.isCurrent && item.status !== 'paid' && (
+                        <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full">
+                          ปัจจุบัน
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500">{formatCurrency(item.amount)}</p>
+                  </div>
+                </div>
+
+                {/* Right: Action */}
+                <button
+                  onClick={() => togglePayment(item.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 border
+                    ${item.status === 'paid'
+                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-emerald-200'
+                      : 'bg-white border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'}
+                  `}
+                >
+                  {item.status === 'paid' ? (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="hidden sm:inline font-medium">จ่ายแล้ว</span>
+                    </>
+                  ) : (
+                    <>
+                      <Circle className="w-5 h-5" />
+                      <span className="hidden sm:inline">รอชำระ</span>
+                    </>
+                  )}
                 </button>
-            </div>
-
-            <!-- Dashboard Card -->
-            <div class="glass-card rounded-[2.5rem] p-6 shadow-xl mb-6 transition-all duration-300">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">ยอดคงเหลือรวม</p>
-                        <h2 id="remaining-amount" class="text-3xl font-black tracking-tighter mt-1 text-slate-800 dark:text-white">
-                            ฿0
-                        </h2>
-                    </div>
-                    <div class="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-2 rounded-xl">
-                        <i data-lucide="trending-up"></i>
-                    </div>
-                </div>
-
-                <div class="space-y-4">
-                    <div class="flex justify-between text-xs font-bold uppercase tracking-widest text-slate-400">
-                        <span>ความคืบหน้าการผ่อน</span>
-                        <span id="progress-text" class="text-emerald-500">0%</span>
-                    </div>
-                    <div class="h-4 bg-slate-100 dark:bg-slate-800 rounded-full p-1 shadow-inner">
-                        <div id="progress-bar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-1000 ease-out progress-glow" style="width: 0%"></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 pt-2">
-                        <div class="border-r border-slate-100 dark:border-slate-800">
-                            <p class="text-[10px] text-slate-400 uppercase font-bold">จ่ายแล้ว</p>
-                            <p id="paid-installments-text" class="text-sm font-bold dark:text-white">0 / 72 งวด</p>
-                        </div>
-                        <div class="pl-2">
-                            <p class="text-[10px] text-slate-400 uppercase font-bold">เงินต้นที่จ่าย</p>
-                            <p id="total-paid-text" class="text-sm font-bold text-emerald-500">฿0</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Info Grid -->
-            <div class="grid grid-cols-2 gap-3 mb-8">
-                <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
-                    <div class="bg-amber-100 dark:bg-amber-500/10 p-2 rounded-xl text-amber-600">
-                        <i data-lucide="clock" size="18"></i>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase">งวดถัดไป</p>
-                        <p class="text-xs font-bold dark:text-white">20 ก.พ. 69</p>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
-                    <div class="bg-blue-100 dark:bg-blue-500/10 p-2 rounded-xl text-blue-600">
-                        <i data-lucide="wallet" size="18"></i>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase">จำนวนเงิน</p>
-                        <p class="text-xs font-bold dark:text-white">฿12,220.01</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Timeline List -->
-            <div class="flex justify-between items-center mb-5">
-                <h3 class="text-lg font-black dark:text-white flex items-center gap-2">
-                    <i data-lucide="calendar" class="text-emerald-500"></i>
-                    ไทม์ไลน์การจ่าย
-                </h3>
-                <span class="text-[10px] font-black bg-slate-200 dark:bg-slate-800 text-slate-500 px-3 py-1 rounded-full uppercase">72 งวด</span>
-            </div>
-
-            <div id="installment-list" class="space-y-3">
-                <!-- Data will be injected here by JS -->
-            </div>
+              </div>
+            ))}
+          </div>
         </div>
-
-        <!-- Bottom Navigation -->
-        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50">
-            <div class="bg-slate-900/95 dark:bg-white/95 backdrop-blur-2xl rounded-full px-8 py-4 flex justify-between items-center shadow-2xl border border-white/10 dark:border-slate-800">
-                <div class="flex flex-col items-center gap-1 text-emerald-400 dark:text-emerald-600">
-                    <i data-lucide="layout-dashboard"></i>
-                    <span class="text-[8px] font-bold uppercase tracking-widest">หน้าหลัก</span>
-                </div>
-                <div class="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center -mt-12 border-4 border-slate-50 dark:border-slate-950 shadow-xl text-white">
-                    <i data-lucide="plus"></i>
-                </div>
-                <div class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500">
-                    <i data-lucide="settings"></i>
-                    <span class="text-[8px] font-bold uppercase tracking-widest">ตั้งค่า</span>
-                </div>
-            </div>
-        </div>
+      </main>
     </div>
+  );
+};
 
-    <script>
-        // Configuration
-        const TOTAL_AMOUNT = 879840;
-        const TOTAL_INSTALLMENTS = 72;
-        const MONTHLY_PAYMENT = 12220;
-        const CURRENT_INDEX = 26; // งวดปัจจุบันตามรูปสลิป
-
-        // State
-        let installments = [];
-
-        function initData() {
-            // สร้างข้อมูล 72 งวด
-            for (let i = 1; i <= TOTAL_INSTALLMENTS; i++) {
-                installments.push({
-                    id: i,
-                    amount: MONTHLY_PAYMENT,
-                    isPaid: i < CURRENT_INDEX, // งวดก่อน 26 คือจ่ายแล้ว
-                    date: `20/${String(((i-1) % 12) + 1).padStart(2, '0')}/${2567 + Math.floor((i-1) / 12)}`
-                });
-            }
-            render();
-        }
-
-        function togglePaid(id) {
-            const index = installments.findIndex(item => item.id === id);
-            installments[index].isPaid = !installments[index].isPaid;
-            render();
-        }
-
-        function render() {
-            const listContainer = document.getElementById('installment-list');
-            const paidCount = installments.filter(i => i.isPaid).length;
-            const progress = (paidCount / TOTAL_INSTALLMENTS) * 100;
-            const totalPaid = paidCount * MONTHLY_PAYMENT;
-            const remaining = TOTAL_AMOUNT - totalPaid;
-
-            // Update Dashboard
-            document.getElementById('remaining-amount').innerText = `฿${remaining.toLocaleString()}`;
-            document.getElementById('progress-text').innerText = `${progress.toFixed(1)}%`;
-            document.getElementById('progress-bar').style.width = `${progress}%`;
-            document.getElementById('paid-installments-text').innerText = `${paidCount} / 72 งวด`;
-            document.getElementById('total-paid-text').innerText = `฿${totalPaid.toLocaleString()}`;
-
-            // Render List
-            listContainer.innerHTML = installments.map(item => {
-                const isCurrent = item.id === CURRENT_INDEX;
-                const statusClass = item.isPaid 
-                    ? 'bg-white dark:bg-slate-900 border-emerald-100 dark:border-emerald-900/30' 
-                    : isCurrent 
- 
+export default App;
