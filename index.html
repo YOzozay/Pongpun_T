@@ -2,78 +2,95 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ไทม์ไลน์การผ่อน</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
 </head>
 
-<body class="bg-gray-100 min-h-screen p-6">
+<body class="bg-gray-50 min-h-screen p-6">
 
-<div class="max-w-5xl mx-auto">
+<div class="max-w-4xl mx-auto">
+  <div class="flex items-center justify-between mb-8">
+    <h1 class="text-3xl font-bold text-gray-800">ไทม์ไลน์การผ่อน</h1>
+    <span id="loading-status" class="text-sm text-blue-500 font-medium">กำลังโหลดข้อมูล...</span>
+  </div>
 
-  <h1 class="text-3xl font-bold mb-8">ไทม์ไลน์การผ่อน</h1>
-
-  <div id="installments" class="grid md:grid-cols-2 gap-4"></div>
-
+  <div id="installments" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 </div>
 
 <script>
-
-const API_URL = "https://script.google.com/macros/s/AKfycbzqOWDdYSij28lKlJwHlO-86JvHKyjEWlaJ51lL6572xAPPG13dRDYVM6IQaV13t7_mZA/exec";
+// ใส่ URL ของ Web App ที่คุณ Deploy ล่าสุดที่นี่
+const API_URL = "https://script.google.com/macros/s/AKfycbzTpDyH-yPWVluGhj2sgQg8tR1oGuSsy382VyVfrvPKxtEXZhiPmWL2afULTC8LA6N_gA/exec";
 
 document.addEventListener("DOMContentLoaded", function () {
-
   fetch(API_URL)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error("Network response was not ok");
+      return res.json();
+    })
     .then(data => {
-      console.log("DATA:", data);
+      console.log("ได้รับข้อมูล:", data);
+      document.getElementById("loading-status").classList.add("hidden");
       render(data);
     })
     .catch(err => {
       console.error("FETCH ERROR:", err);
-      document.getElementById("installments").innerHTML =
-        "<div class='text-red-600'>โหลดข้อมูลไม่สำเร็จ</div>";
+      document.getElementById("loading-status").innerText = "เกิดข้อผิดพลาดในการโหลด";
+      document.getElementById("installments").innerHTML = `
+        <div class='col-span-full text-center p-10 bg-red-50 text-red-600 rounded-xl border border-red-200'>
+          ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบการตั้งค่า Deployment ของคุณ
+        </div>`;
     });
-
 });
 
 function render(data) {
-
   const container = document.getElementById("installments");
   container.innerHTML = "";
 
+  if (!data || data.length === 0) {
+    container.innerHTML = "<div class='text-gray-500'>ไม่พบข้อมูลการผ่อน</div>";
+    return;
+  }
+
   data.forEach(row => {
+    // โครงสร้างข้อมูลจาก Apps Script: [no, date, amount, status, note]
+    const no = row[0] || "-";
+    const date = row[1] || "-"; // ไม่ต้อง split("T") เพราะฝั่ง Apps Script จัดการมาให้แล้ว
+    const amount = typeof row[2] === 'number' ? row[2] : 0;
+    const status = row[3] ? row[3].trim() : "";
 
-    const no = row[0];
-    const rawDate = row[1];
-    const amount = row[2];
-    const status = row[3];
-
-    // ตัดเวลาออกจาก ISO string
-    const date = rawDate.split("T")[0];
-
-    let bg = "bg-gray-100";
-    let badge = "";
+    // กำหนดสีและสัญลักษณ์ตามสถานะ
+    let bgClass = "bg-white border-gray-200";
+    let badgeHtml = "";
 
     if (status === "จ่ายแล้ว") {
-      bg = "bg-green-100";
-      badge = "✔";
+      bgClass = "bg-green-50 border-green-200";
+      badgeHtml = `
+        <div class="bg-green-500 text-white rounded-full p-1 w-8 h-8 flex items-center justify-center shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+          </svg>
+        </div>`;
     }
 
     container.innerHTML += `
-      <div class="p-5 rounded-xl shadow ${bg} flex justify-between items-center">
+      <div class="p-5 rounded-2xl border ${bgClass} shadow-sm flex justify-between items-center transition hover:shadow-md">
         <div>
-          <div class="font-semibold text-lg">งวด ${no}</div>
-          <div class="text-sm text-gray-600">${date}</div>
-          <div class="text-sm">฿${amount.toLocaleString()}</div>
+          <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">งวดที่ ${no}</div>
+          <div class="text-sm font-medium text-gray-600 mb-1">📅 ${date}</div>
+          <div class="text-xl font-bold text-gray-800">฿${amount.toLocaleString()}</div>
         </div>
-        <div class="text-green-600 text-xl font-bold">${badge}</div>
+        <div>
+          ${badgeHtml}
+        </div>
       </div>
     `;
-
   });
-
 }
-
 </script>
 
 </body>
