@@ -1,50 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
+  <meta charset="UTF-8">
+  <title>ไทม์ไลน์การผ่อน</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-10">
 
-<div class="max-w-4xl mx-auto">
-  <h1 class="text-2xl font-bold mb-6">ไทม์ไลน์การผ่อน</h1>
-  <div id="installments" class="grid grid-cols-2 gap-4"></div>
+<body class="bg-gray-100 min-h-screen p-6">
+
+<div class="max-w-5xl mx-auto">
+
+  <h1 class="text-3xl font-bold mb-8">ไทม์ไลน์การผ่อน</h1>
+
+  <div id="installments" class="grid md:grid-cols-2 gap-4"></div>
+
 </div>
 
 <script>
 
-const API_URL = "https://script.google.com/macros/s/AKfycbz-eKRqJxfRBdAk7BOxVadyoHgR5VAwZUFMvSIZSqP3VrLFhiJbySBucnbNl8yQs8sAXA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyxYXslaTcGdSh0giSJcbEv2QjNtEyOCmse7E31h-1ivLknfQaQrhDN-Ke4IYrSK2ZjtA/exec";
 
-fetch(API_URL)
-  .then(res => res.json())
-  .then(data => {
+document.addEventListener("DOMContentLoaded", function () {
 
-    const container = document.getElementById("installments");
-
-    data.forEach(row => {
-
-      const [no, date, amount, status] = row;
-
-      let bg = "bg-gray-100";
-      let badge = "";
-
-      if(status === "จ่ายแล้ว"){
-        bg = "bg-green-100";
-        badge = "✔";
-      }
-
-      container.innerHTML += `
-        <div class="p-4 rounded-xl ${bg} flex justify-between">
-          <div>
-            <div class="font-semibold">งวด ${no}</div>
-            <div class="text-sm text-gray-500">${date}</div>
-            <div class="text-sm">฿${amount}</div>
-          </div>
-          <div class="text-green-600 text-xl">${badge}</div>
-        </div>
-      `;
+  fetch(API_URL)
+    .then(res => res.json())
+    .then(data => {
+      console.log("DATA:", data);
+      render(data);
+    })
+    .catch(err => {
+      console.error("FETCH ERROR:", err);
+      document.getElementById("installments").innerHTML =
+        "<div class='text-red-600'>โหลดข้อมูลไม่สำเร็จ</div>";
     });
 
+});
+
+function render(data) {
+
+  const container = document.getElementById("installments");
+  container.innerHTML = "";
+
+  data.forEach(row => {
+
+    const no = row[0];
+    const rawDate = row[1];
+    const amount = row[2];
+    const status = row[3];
+
+    // ตัดเวลาออกจาก ISO string
+    const date = rawDate.split("T")[0];
+
+    let bg = "bg-gray-100";
+    let badge = "";
+
+    if (status === "จ่ายแล้ว") {
+      bg = "bg-green-100";
+      badge = "✔";
+    }
+
+    container.innerHTML += `
+      <div class="p-5 rounded-xl shadow ${bg} flex justify-between items-center">
+        <div>
+          <div class="font-semibold text-lg">งวด ${no}</div>
+          <div class="text-sm text-gray-600">${date}</div>
+          <div class="text-sm">฿${amount.toLocaleString()}</div>
+        </div>
+        <div class="text-green-600 text-xl font-bold">${badge}</div>
+      </div>
+    `;
+
   });
+
+}
 
 </script>
 
