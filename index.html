@@ -3,89 +3,144 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ไทม์ไลน์การผ่อน</title>
+  <title>K-Leasing Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Kanit', sans-serif; }
+    body { font-family: 'Kanit', sans-serif; background-color: #f8fafc; }
+    .k-green { background-color: #2d8c3c; } /* สีเขียวสไตล์ธนาคาร */
+    .k-dark-green { background-color: #1e5e28; }
   </style>
 </head>
+<body class="min-h-screen">
 
-<body class="bg-gray-50 min-h-screen p-6">
+<div class="max-w-6xl mx-auto p-4 md:p-8">
+  <div class="flex flex-col lg:flex-row gap-8">
+    
+    <div class="lg:w-1/3">
+      <div class="k-green text-white rounded-[2rem] p-8 shadow-2xl sticky top-8">
+        <div class="flex justify-between items-start mb-8">
+          <div>
+            <h2 class="italic font-bold text-2xl tracking-tighter">K LEASING</h2>
+            <p class="text-xs opacity-80">ทะเบียน 5ขต6150</p>
+          </div>
+          <button class="bg-white/20 px-3 py-1 rounded-full text-xs">รีเซ็ต</button>
+        </div>
 
-<div class="max-w-4xl mx-auto">
-  <div class="flex items-center justify-between mb-8">
-    <h1 class="text-3xl font-bold text-gray-800">ไทม์ไลน์การผ่อน</h1>
-    <span id="loading-status" class="text-sm text-blue-500 font-medium">กำลังโหลดข้อมูล...</span>
+        <div class="mb-8">
+          <p class="text-sm opacity-90 font-light">ยอดค่าเช่าซื้อคงเหลือ</p>
+          <h3 class="text-4xl font-bold mt-1">฿<span id="total-remaining">0.00</span></h3>
+        </div>
+
+        <div class="mb-10">
+          <div class="flex justify-between text-sm mb-2">
+            <span>ความคืบหน้าการผ่อน</span>
+            <span id="progress-percent" class="font-bold text-yellow-400">0%</span>
+          </div>
+          <div class="w-full bg-black/20 rounded-full h-2">
+            <div id="progress-bar" class="bg-yellow-400 h-2 rounded-full transition-all duration-1000" style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] mt-2 opacity-80">
+            <span>จ่ายแล้ว <span id="paid-count">0</span> งวด</span>
+            <span>ทั้งหมด <span id="total-count">0</span> งวด</span>
+          </div>
+        </div>
+
+        <div class="bg-white text-gray-800 rounded-2xl p-5 shadow-lg">
+          <div class="flex items-center gap-2 mb-2 text-xs text-orange-500 font-bold">
+            <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+            งวดถัดไปที่ <span id="next-no">-</span>
+          </div>
+          <div class="text-2xl font-bold mb-1" id="next-date">--/--/----</div>
+          <div class="text-sm text-gray-500 mb-4">ยอดชำระ: <span class="font-bold text-gray-800">฿<span id="next-amount">0.00</span></span></div>
+          <button class="w-full k-green text-white py-3 rounded-xl font-bold hover:k-dark-green transition shadow-md">ยืนยันชำระงวดนี้</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:w-2/3">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <span class="w-1 h-6 k-green rounded-full"></span>
+          ไทม์ไลน์การจ่ายค่างวด
+        </h1>
+        <div id="status-tag" class="text-[10px] bg-gray-200 px-3 py-1 rounded-full text-gray-600">กำลังดึงข้อมูล...</div>
+      </div>
+
+      <div id="installments-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        </div>
+    </div>
+
   </div>
-
-  <div id="installments" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 </div>
 
 <script>
-// ใส่ URL ของ Web App ที่คุณ Deploy ล่าสุดที่นี่
 const API_URL = "https://script.google.com/macros/s/AKfycbzTpDyH-yPWVluGhj2sgQg8tR1oGuSsy382VyVfrvPKxtEXZhiPmWL2afULTC8LA6N_gA/exec";
+  
+document.addEventListener("DOMContentLoaded", fetchData);
 
-document.addEventListener("DOMContentLoaded", function () {
+function fetchData() {
   fetch(API_URL)
-    .then(res => {
-      if (!res.ok) throw new Error("Network response was not ok");
-      return res.json();
-    })
+    .then(res => res.json())
     .then(data => {
-      console.log("ได้รับข้อมูล:", data);
-      document.getElementById("loading-status").classList.add("hidden");
-      render(data);
+      document.getElementById("status-tag").innerText = "อัปเดตล่าสุด";
+      calculateDashboard(data);
+      renderTimeline(data);
     })
     .catch(err => {
-      console.error("FETCH ERROR:", err);
-      document.getElementById("loading-status").innerText = "เกิดข้อผิดพลาดในการโหลด";
-      document.getElementById("installments").innerHTML = `
-        <div class='col-span-full text-center p-10 bg-red-50 text-red-600 rounded-xl border border-red-200'>
-          ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบการตั้งค่า Deployment ของคุณ
-        </div>`;
+      console.error(err);
+      document.getElementById("status-tag").innerText = "โหลดผิดพลาด";
     });
-});
+}
 
-function render(data) {
-  const container = document.getElementById("installments");
+function calculateDashboard(data) {
+  const totalInstallments = data.length;
+  const paidRows = data.filter(row => row[3] === "จ่ายแล้ว");
+  const unpaidRows = data.filter(row => row[3] !== "จ่ายแล้ว");
+  
+  const paidCount = paidRows.length;
+  const progress = Math.round((paidCount / totalInstallments) * 100);
+  
+  // คำนวณยอดคงเหลือ (จากแถวที่ยังไม่จ่าย)
+  const remainingAmount = unpaidRows.reduce((sum, row) => sum + (Number(row[2]) || 0), 0);
+  
+  // หางวดถัดไป
+  const nextInstallment = unpaidRows[0] || {};
+
+  // อัปเดต UI
+  document.getElementById("total-remaining").innerText = remainingAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
+  document.getElementById("progress-percent").innerText = progress + "%";
+  document.getElementById("progress-bar").style.width = progress + "%";
+  document.getElementById("paid-count").innerText = paidCount;
+  document.getElementById("total-count").innerText = totalInstallments;
+  
+  document.getElementById("next-no").innerText = nextInstallment[0] || "-";
+  document.getElementById("next-date").innerText = nextInstallment[1] || "ครบกำหนดแล้ว";
+  document.getElementById("next-amount").innerText = (nextInstallment[2] || 0).toLocaleString();
+}
+
+function renderTimeline(data) {
+  const container = document.getElementById("installments-grid");
   container.innerHTML = "";
 
-  if (!data || data.length === 0) {
-    container.innerHTML = "<div class='text-gray-500'>ไม่พบข้อมูลการผ่อน</div>";
-    return;
-  }
-
   data.forEach(row => {
-    // โครงสร้างข้อมูลจาก Apps Script: [no, date, amount, status, note]
-    const no = row[0] || "-";
-    const date = row[1] || "-"; // ไม่ต้อง split("T") เพราะฝั่ง Apps Script จัดการมาให้แล้ว
-    const amount = typeof row[2] === 'number' ? row[2] : 0;
-    const status = row[3] ? row[3].trim() : "";
-
-    // กำหนดสีและสัญลักษณ์ตามสถานะ
-    let bgClass = "bg-white border-gray-200";
-    let badgeHtml = "";
-
-    if (status === "จ่ายแล้ว") {
-      bgClass = "bg-green-50 border-green-200";
-      badgeHtml = `
-        <div class="bg-green-500 text-white rounded-full p-1 w-8 h-8 flex items-center justify-center shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-          </svg>
-        </div>`;
-    }
-
+    const isPaid = row[3] === "จ่ายแล้ว";
+    
     container.innerHTML += `
-      <div class="p-5 rounded-2xl border ${bgClass} shadow-sm flex justify-between items-center transition hover:shadow-md">
-        <div>
-          <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">งวดที่ ${no}</div>
-          <div class="text-sm font-medium text-gray-600 mb-1">📅 ${date}</div>
-          <div class="text-xl font-bold text-gray-800">฿${amount.toLocaleString()}</div>
+      <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between transition hover:shadow-md">
+        <div class="flex items-center gap-4">
+          <div class="${isPaid ? 'k-green text-white' : 'bg-gray-100 text-gray-400'} w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm">
+            ${row[0]}
+          </div>
+          <div>
+            <div class="text-[10px] text-gray-400 font-medium">${row[1]}</div>
+            <div class="text-sm font-bold text-gray-700">฿${(row[2] || 0).toLocaleString()}</div>
+          </div>
         </div>
         <div>
-          ${badgeHtml}
+          ${isPaid ? 
+            '<div class="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-[10px]">✔</div>' : 
+            '<div class="w-6 h-6 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center text-[10px]">○</div>'}
         </div>
       </div>
     `;
@@ -95,3 +150,4 @@ function render(data) {
 
 </body>
 </html>
+  
