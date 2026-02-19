@@ -85,11 +85,11 @@
          REACT APPLICATION
          ============================================================ -->
         <script type="text/babel">
-            const { useState, useEffect, useMemo } = React;
+            const { useState, useEffect, useMemo, useRef } = React;
 
             // ── Google Apps Script backend endpoint ──────────────────────
             const API_URL =
-                "https://script.google.com/macros/s/AKfycbzjL-aBbN3-gTShhqD_cFz-y_KBznZJHiDPepOU_nKZ7H0wm5Mtk_mWGEbXJ1F9Gw510Q/exec";
+                "https://script.google.com/macros/s/AKfycby5t3ZfFFj0wBxLqVNQC-dmE2IfVZHDzYcrp9H1Ntk-xsUvIsr-8kn9HeazL8G0Im8WRg/exec";
 
             // ════════════════════════════════════════════════════════════
             // APP COMPONENT
@@ -143,26 +143,39 @@
                     localStorage.setItem("app_config", JSON.stringify(config));
                 }, [config]);
 
-                // Hide/show mobile header on scroll
+                // ── Refs for header height measurement and scroll target ──
+                const headerRef = useRef(null);
+                const mainRef = useRef(null);
+                const [headerHeight, setHeaderHeight] = useState(128);
+
+                // Hide/show mobile header on scroll — listener on <main> (the actual scroll container)
                 useEffect(() => {
+                    const mainEl = mainRef.current;
+                    if (!mainEl) return;
                     const handleScroll = () => {
                         if (window.innerWidth < 1024) {
-                            const currentScrollY = window.scrollY;
-                            if (
-                                currentScrollY > lastScrollY &&
-                                currentScrollY > 50
-                            ) {
-                                setShowHeader(false);
-                            } else {
-                                setShowHeader(true);
-                            }
+                            const currentScrollY = mainEl.scrollTop;
+                            setShowHeader(
+                                currentScrollY <= lastScrollY ||
+                                    currentScrollY <= 50,
+                            );
                             setLastScrollY(currentScrollY);
                         }
                     };
-                    window.addEventListener("scroll", handleScroll);
+                    mainEl.addEventListener("scroll", handleScroll);
                     return () =>
-                        window.removeEventListener("scroll", handleScroll);
+                        mainEl.removeEventListener("scroll", handleScroll);
                 }, [lastScrollY]);
+
+                // Measure actual header height so main padding always matches exactly
+                useEffect(() => {
+                    if (!headerRef.current) return;
+                    const obs = new ResizeObserver(() => {
+                        setHeaderHeight(headerRef.current.offsetHeight);
+                    });
+                    obs.observe(headerRef.current);
+                    return () => obs.disconnect();
+                }, []);
 
                 // Apply / remove dark mode class on <html>
                 useEffect(() => {
@@ -504,6 +517,7 @@
                     <div className="min-h-screen flex flex-col lg:flex-row font-sans overflow-hidden h-screen transition-colors duration-300">
                         {/* ── Sidebar / Mobile Top Nav ─────────────────────── */}
                         <aside
+                            ref={headerRef}
                             className={`w-full lg:w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-6 flex flex-col shrink-0 fixed lg:static top-0 left-0 right-0 z-50 mobile-header ${showHeader ? "translate-y-0" : "mobile-header-hidden lg:translate-y-0"}`}
                         >
                             {/* Logo */}
@@ -553,7 +567,16 @@
                         </aside>
 
                         {/* ── Main Content ─────────────────────────────────── */}
-                        <main className="flex-1 p-4 lg:p-10 overflow-y-auto custom-scroll pt-32 lg:pt-10">
+                        <main
+                            ref={mainRef}
+                            className="flex-1 p-4 lg:p-10 overflow-y-auto custom-scroll lg:pt-10"
+                            style={{
+                                paddingTop:
+                                    window.innerWidth < 1024
+                                        ? `${headerHeight + 16}px`
+                                        : undefined,
+                            }}
+                        >
                             {/* ══ CAR INSTALMENT TAB ════════════════════════ */}
                             {activeTab === "car" ? (
                                 <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -1215,7 +1238,7 @@
                                                                 </div>
                                                                 <div className="flex items-center gap-4">
                                                                     <div className="text-right flex flex-col items-end">
-                                                                        <span className="text-[10px] font-black text-slate-400 italic">
+                                                                        <span className="text-[18px] font-black text-slate-400 italic">
                                                                             {renderOtDetails(
                                                                                 row,
                                                                             )}
