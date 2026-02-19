@@ -1,519 +1,1447 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MY HUB - Financial Tracker</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Kanit', 'sans-serif'] },
-                }
+    <!-- ============================================================
+     HEAD: Dependencies, fonts, and global styles
+     ============================================================ -->
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>MY HUB - Financial Tracker</title>
+
+        <!-- External Libraries -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+        <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+        <!-- Thai Font -->
+        <link
+            href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap"
+            rel="stylesheet"
+        />
+
+        <!-- Tailwind Configuration -->
+        <script>
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        fontFamily: { sans: ["Kanit", "sans-serif"] },
+                    },
+                },
+            };
+        </script>
+
+        <!-- Global Styles -->
+        <style>
+            /* Smooth dark/light mode transition */
+            body {
+                transition: background-color 0.3s ease;
             }
-        }
-    </script>
-    <style>
-        body { transition: background-color 0.3s ease; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .dark .custom-scroll::-webkit-scrollbar-thumb { background: #475569; }
-        .mobile-header { transition: transform 0.3s ease-in-out; }
-        .mobile-header-hidden { transform: translateY(-100%); }
-    </style>
-</head>
-<body class="bg-[#F8FAFC] dark:bg-[#0F172A] text-slate-900 dark:text-slate-100 transition-colors duration-300">
-    <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+            /* Hide scrollbar (mobile nav) */
+            .hide-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .hide-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
 
-        // อัพเดต API_URL ใหม่ตามที่ระบุ
-        const API_URL = "https://script.google.com/macros/s/AKfycbxCxTr9Cs-JXVc6o-xUfdjNjn4_4FQe7LmKQ8XwnuoZRTgpyH-5avcOMz4wB0lna5DNXQ/exec";
+            /* Styled scrollbar for content areas */
+            .custom-scroll::-webkit-scrollbar {
+                width: 6px;
+            }
+            .custom-scroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .custom-scroll::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 10px;
+            }
+            .dark .custom-scroll::-webkit-scrollbar-thumb {
+                background: #475569;
+            }
 
-        function App() {
-            const [activeTab, setActiveTab] = useState('car');
-            const [data, setData] = useState([]);
-            const [loading, setLoading] = useState(false);
-            const [darkMode, setDarkMode] = useState(false);
-            const [showSettings, setShowSettings] = useState(false);
-            const [showHeader, setShowHeader] = useState(true);
-            const [lastScrollY, setLastScrollY] = useState(0);
+            /* Mobile header slide animation */
+            .mobile-header {
+                transition: transform 0.3s ease-in-out;
+            }
+            .mobile-header-hidden {
+                transform: translateY(-100%);
+            }
+        </style>
+    </head>
 
-            const [config, setConfig] = useState(() => {
-                const saved = localStorage.getItem('app_config');
-                return saved ? JSON.parse(saved) : {
-                    salary: 15000,
-                    otRate: 76.26,
-                    deduct: 1350,
-                    food: 40,
-                    foodOt: 30,
-                    gas: 55,
-                    incentive: 1000,
-                    carPrice: 12220,
-                    totalInstallments: 72
-                };
-            });
+    <!-- ============================================================
+     BODY: React mounts into #root
+     ============================================================ -->
+    <body
+        class="bg-[#F8FAFC] dark:bg-[#0F172A] text-slate-900 dark:text-slate-100 transition-colors duration-300"
+    >
+        <div id="root"></div>
 
-            useEffect(() => {
-                localStorage.setItem('app_config', JSON.stringify(config));
-            }, [config]);
+        <!-- ============================================================
+         REACT APPLICATION
+         ============================================================ -->
+        <script type="text/babel">
+            const { useState, useEffect, useMemo } = React;
 
-            const [otForm, setOtForm] = useState({ 
-                date: new Date().toISOString().split('T')[0], 
-                ot1: 0, 
-                ot15: 0, 
-                ot3: 0, 
-                note: '',
-                dayType: 'work'
-            });
+            // ── Google Apps Script backend endpoint ──────────────────────
+            const API_URL =
+                "https://script.google.com/macros/s/AKfycbwzhfbVMll2Z9SRDqW8iM74fQNYCgULeho42ZXXoeNa_e44tUbND3nKJ1oIj102WnGsSQ/exec";
 
-            useEffect(() => {
-                const handleScroll = () => {
-                    if (window.innerWidth < 1024) {
-                        const currentScrollY = window.scrollY;
-                        if (currentScrollY > lastScrollY && currentScrollY > 50) {
-                            setShowHeader(false);
-                        } else {
-                            setShowHeader(true);
-                        }
-                        setLastScrollY(currentScrollY);
-                    }
-                };
-                window.addEventListener('scroll', handleScroll);
-                return () => window.removeEventListener('scroll', handleScroll);
-            }, [lastScrollY]);
+            // ════════════════════════════════════════════════════════════
+            // APP COMPONENT
+            // ════════════════════════════════════════════════════════════
+            function App() {
+                // ── Tab & UI state ───────────────────────────────────────
+                const [activeTab, setActiveTab] = useState("car");
+                const [loading, setLoading] = useState(false);
+                const [darkMode, setDarkMode] = useState(false);
+                const [showSettings, setShowSettings] = useState(false);
+                const [showHeader, setShowHeader] = useState(true);
+                const [lastScrollY, setLastScrollY] = useState(0);
 
-            useEffect(() => {
-                if (darkMode) document.documentElement.classList.add('dark');
-                else document.documentElement.classList.remove('dark');
-            }, [darkMode]);
+                // ── Remote data from Google Sheets ───────────────────────
+                const [data, setData] = useState([]);
 
-            const fetchData = async (mode) => {
-                setLoading(true);
-                try {
-                    const response = await fetch(`${API_URL}?mode=${mode}`);
-                    const json = await response.json();
-                    setData(Array.isArray(json) ? json : []);
-                } catch (error) {
-                    console.error("Fetch error:", error);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            useEffect(() => { fetchData(activeTab); }, [activeTab]);
-
-            const carInfo = useMemo(() => {
-                if (activeTab !== 'car') return {};
-                const paidList = data.filter(row => row[3] === 'จ่ายแล้ว');
-                const nextInstallment = data.find(row => row[3] !== 'จ่ายแล้ว');
-                const paidCount = paidList.length;
-                const remainingAmount = (config.totalInstallments - paidCount) * config.carPrice;
-                const progressPercent = Math.round((paidCount / config.totalInstallments) * 100);
-                const sortedData = [...data].sort((a, b) => Number(a[0]) - Number(b[0]));
-                return { paidCount, remainingAmount, progressPercent, nextInstallment, sortedData };
-            }, [data, activeTab, config]);
-
-            const handlePayCar = async (no) => {
-                if (!no) return;
-                setLoading(true);
-                try {
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: JSON.stringify({ no, type: 'pay_car' })
-                    });
-                    setTimeout(() => fetchData('car'), 1500);
-                } catch (e) { setLoading(false); }
-            };
-
-            const otSummary = useMemo(() => {
-                if (activeTab !== 'ot') return { totalHrs: 0, otPay: 0, netSalary: 0, stats: [], currentCycleData: [] };
-                
-                let totalHrsCurrentCycle = 0;
-                let allowanceCurrentCycle = 0;
-                const monthlyStatsMap = {};
-                const currentCycleRows = [];
-
-                const now = new Date();
-                const today = now.getDate();
-                
-                let startOfCycle, endOfCycle;
-                if (today <= 20) {
-                    startOfCycle = new Date(now.getFullYear(), now.getMonth() - 1, 21, 0, 0, 0);
-                    endOfCycle = new Date(now.getFullYear(), now.getMonth(), 20, 23, 59, 59);
-                } else {
-                    startOfCycle = new Date(now.getFullYear(), now.getMonth(), 21, 0, 0, 0);
-                    endOfCycle = new Date(now.getFullYear(), now.getMonth() + 1, 20, 23, 59, 59);
-                }
-
-                data.forEach(row => {
-                    const rowDate = new Date(row[0]);
-                    const hrs = (Number(row[1]) || 0) + (Number(row[2]) * 1.5) + (Number(row[3]) * 3);
-                    const foodNormal = Number(row[6]) || 0;
-                    const foodOt = Number(row[7]) || 0;
-                    const gas = Number(row[8]) || 0;
-                    const dailyTotalAllowance = foodNormal + foodOt + gas;
-
-                    let cycleDateForGraph = new Date(rowDate);
-                    if (rowDate.getDate() > 20) {
-                        cycleDateForGraph.setMonth(rowDate.getMonth() + 1);
-                    }
-                    const cycleKey = cycleDateForGraph.toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
-                    const dailyIncome = (hrs * config.otRate) + dailyTotalAllowance;
-
-                    if (rowDate >= startOfCycle && rowDate <= endOfCycle) {
-                        totalHrsCurrentCycle += hrs;
-                        allowanceCurrentCycle += dailyTotalAllowance;
-                        currentCycleRows.push(row);
-                    }
-
-                    if (cycleDateForGraph <= endOfCycle) {
-                        if (!monthlyStatsMap[cycleKey]) {
-                            monthlyStatsMap[cycleKey] = {
-                                total: (Number(config.salary) - Number(config.deduct) + Number(config.incentive)),
-                                dateObj: new Date(cycleDateForGraph.getFullYear(), cycleDateForGraph.getMonth(), 1)
-                            };
-                        }
-                        monthlyStatsMap[cycleKey].total += dailyIncome;
-                    }
+                // ── User-editable configuration (saved to localStorage) ──
+                const [config, setConfig] = useState(() => {
+                    const saved = localStorage.getItem("app_config");
+                    return saved
+                        ? JSON.parse(saved)
+                        : {
+                              salary: 15000, // base monthly salary
+                              otRate: 76.26, // OT pay per hour (x1.0 rate)
+                              deduct: 1350, // monthly deductions
+                              food: 40, // normal-day meal allowance
+                              foodOt: 30, // OT-day meal allowance
+                              gas: 55, // fuel allowance per day
+                              incentive: 1000, // monthly attendance bonus
+                              carPrice: 12220, // instalment amount per month
+                              totalInstallments: 72, // total number of instalments
+                          };
                 });
 
-                const otPay = totalHrsCurrentCycle * config.otRate;
-                const netSalary = (Number(config.salary) - Number(config.deduct) + Number(config.incentive)) + otPay + allowanceCurrentCycle;
-                
-                const statsArray = Object.keys(monthlyStatsMap)
-                    .map(key => ({
-                        label: key,
-                        value: monthlyStatsMap[key].total,
-                        date: monthlyStatsMap[key].dateObj
-                    }))
-                    .sort((a, b) => a.date - b.date)
-                    .slice(-6); 
+                // ── New OT entry form state ──────────────────────────────
+                const [otForm, setOtForm] = useState({
+                    date: new Date().toISOString().split("T")[0],
+                    ot1: 0, // hours at x1.0 rate
+                    ot15: 0, // hours at x1.5 rate
+                    ot3: 0, // hours at x3.0 rate
+                    note: "",
+                    dayType: "work", // 'work' | 'holiday'
+                });
 
-                return { 
-                    totalHrs: totalHrsCurrentCycle, 
-                    otPay, 
-                    netSalary, 
-                    allowance: allowanceCurrentCycle, 
-                    stats: statsArray, 
-                    currentCycleData: currentCycleRows.reverse() 
+                // ════════════════════════════════════════════════════════
+                // SIDE EFFECTS
+                // ════════════════════════════════════════════════════════
+
+                // Persist config to localStorage whenever it changes
+                useEffect(() => {
+                    localStorage.setItem("app_config", JSON.stringify(config));
+                }, [config]);
+
+                // Hide/show mobile header on scroll
+                useEffect(() => {
+                    const handleScroll = () => {
+                        if (window.innerWidth < 1024) {
+                            const currentScrollY = window.scrollY;
+                            if (
+                                currentScrollY > lastScrollY &&
+                                currentScrollY > 50
+                            ) {
+                                setShowHeader(false);
+                            } else {
+                                setShowHeader(true);
+                            }
+                            setLastScrollY(currentScrollY);
+                        }
+                    };
+                    window.addEventListener("scroll", handleScroll);
+                    return () =>
+                        window.removeEventListener("scroll", handleScroll);
+                }, [lastScrollY]);
+
+                // Apply / remove dark mode class on <html>
+                useEffect(() => {
+                    if (darkMode)
+                        document.documentElement.classList.add("dark");
+                    else document.documentElement.classList.remove("dark");
+                }, [darkMode]);
+
+                // Fetch data whenever the active tab changes
+                useEffect(() => {
+                    fetchData(activeTab);
+                }, [activeTab]);
+
+                // ════════════════════════════════════════════════════════
+                // DATA FETCHING
+                // ════════════════════════════════════════════════════════
+
+                const fetchData = async (mode) => {
+                    setLoading(true);
+                    try {
+                        const response = await fetch(`${API_URL}?mode=${mode}`);
+                        const json = await response.json();
+                        setData(Array.isArray(json) ? json : []);
+                    } catch (error) {
+                        console.error("Fetch error:", error);
+                    } finally {
+                        setLoading(false);
+                    }
                 };
-            }, [data, activeTab, config]);
 
-            const handleAddOt = async (e) => {
-                e.preventDefault();
-                setLoading(true);
-                const checkDate = new Date(otForm.date);
-                const isSunday = checkDate.getDay() === 0;
-                const finalDayType = isSunday ? 'holiday' : otForm.dayType;
+                // ════════════════════════════════════════════════════════
+                // DERIVED DATA — Car instalment summary
+                // ════════════════════════════════════════════════════════
 
-                try {
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: JSON.stringify({ 
-                            type: 'add_ot', 
+                const carInfo = useMemo(() => {
+                    if (activeTab !== "car") return {};
+
+                    const paidList = data.filter(
+                        (row) => row[3] === "จ่ายแล้ว",
+                    );
+                    const nextInstallment = data.find(
+                        (row) => row[3] !== "จ่ายแล้ว",
+                    );
+                    const paidCount = paidList.length;
+                    const remainingAmount =
+                        (config.totalInstallments - paidCount) *
+                        config.carPrice;
+                    const progressPercent = Math.round(
+                        (paidCount / config.totalInstallments) * 100,
+                    );
+                    const sortedData = [...data].sort(
+                        (a, b) => Number(a[0]) - Number(b[0]),
+                    );
+
+                    return {
+                        paidCount,
+                        remainingAmount,
+                        progressPercent,
+                        nextInstallment,
+                        sortedData,
+                    };
+                }, [data, activeTab, config]);
+
+                // ════════════════════════════════════════════════════════
+                // DERIVED DATA — OT & salary summary
+                // ════════════════════════════════════════════════════════
+
+                const otSummary = useMemo(() => {
+                    if (activeTab !== "ot") {
+                        return {
+                            totalHrs: 0,
+                            otPay: 0,
+                            netSalary: 0,
+                            stats: [],
+                            currentCycleData: [],
+                        };
+                    }
+
+                    let totalHrsCurrentCycle = 0;
+                    let allowanceCurrentCycle = 0;
+                    const monthlyStatsMap = {};
+                    const currentCycleRows = [];
+
+                    // Convert a Date object to a plain YYYYMMDD integer (e.g. 20260120).
+                    // Integer comparison is immune to timezone shifts and object-coercion quirks.
+                    const toInt = (d) =>
+                        d.getFullYear() * 10000 +
+                        (d.getMonth() + 1) * 100 +
+                        d.getDate();
+
+                    // Determine the current pay cycle: 21st of prev month → 20th of this month
+                    const now = new Date();
+                    const today = now.getDate();
+                    let startOfCycle, endOfCycle;
+
+                    if (today <= 20) {
+                        startOfCycle = new Date(
+                            now.getFullYear(),
+                            now.getMonth() - 1,
+                            21,
+                        );
+                        endOfCycle = new Date(
+                            now.getFullYear(),
+                            now.getMonth(),
+                            20,
+                        );
+                    } else {
+                        startOfCycle = new Date(
+                            now.getFullYear(),
+                            now.getMonth(),
+                            21,
+                        );
+                        endOfCycle = new Date(
+                            now.getFullYear(),
+                            now.getMonth() + 1,
+                            20,
+                        );
+                    }
+
+                    const startInt = toInt(startOfCycle);
+                    const endInt = toInt(endOfCycle);
+
+                    // ── Step 1: Separate current-cycle rows from all data ──────────
+                    // Parse each row's date into a local YYYYMMDD integer, then compare
+                    // as plain numbers — no Date-object inequality, no timezone risk.
+                    data.forEach((row) => {
+                        const rawDate = new Date(row[0]);
+                        const rowDateInt = toInt(
+                            new Date(
+                                rawDate.getFullYear(),
+                                rawDate.getMonth(),
+                                rawDate.getDate(),
+                            ),
+                        );
+
+                        const foodNormal = Number(row[6]) || 0;
+                        const foodOt = Number(row[7]) || 0;
+                        const gas = Number(row[8]) || 0;
+                        const dailyTotalAllowance = foodNormal + foodOt + gas;
+
+                        if (rowDateInt >= startInt && rowDateInt <= endInt) {
+                            allowanceCurrentCycle += dailyTotalAllowance;
+                            currentCycleRows.push(row);
+                        }
+
+                        // ── Step 2: Build monthly graph data (all cycles) ──────────
+                        const rowDate = new Date(
+                            rawDate.getFullYear(),
+                            rawDate.getMonth(),
+                            rawDate.getDate(),
+                        );
+                        let cycleDateForGraph = new Date(rowDate);
+                        if (rowDate.getDate() > 20) {
+                            cycleDateForGraph.setMonth(rowDate.getMonth() + 1);
+                        }
+                        const cycleKey = cycleDateForGraph.toLocaleDateString(
+                            "th-TH",
+                            { month: "short", year: "2-digit" },
+                        );
+                        const hrs =
+                            (Number(row[1]) || 0) +
+                            Number(row[2]) * 1.5 +
+                            Number(row[3]) * 3;
+                        const dailyIncome =
+                            hrs * config.otRate + dailyTotalAllowance;
+
+                        if (toInt(cycleDateForGraph) <= endInt) {
+                            if (!monthlyStatsMap[cycleKey]) {
+                                monthlyStatsMap[cycleKey] = {
+                                    total:
+                                        Number(config.salary) -
+                                        Number(config.deduct) +
+                                        Number(config.incentive),
+                                    dateObj: new Date(
+                                        cycleDateForGraph.getFullYear(),
+                                        cycleDateForGraph.getMonth(),
+                                        1,
+                                    ),
+                                };
+                            }
+                            monthlyStatsMap[cycleKey].total += dailyIncome;
+                        }
+                    });
+
+                    // ── Step 3: Sum raw hours; calculate pay separately with multipliers ───
+                    // Columns store actual hours worked — multipliers apply to money only.
+                    currentCycleRows.forEach((row) => {
+                        totalHrsCurrentCycle +=
+                            (Number(row[1]) || 0) + // x1.0 actual hrs
+                            (Number(row[2]) || 0) + // x1.5 actual hrs
+                            (Number(row[3]) || 0); // x3.0 actual hrs
+                    });
+
+                    const otPay = currentCycleRows.reduce(
+                        (sum, row) =>
+                            sum +
+                            (Number(row[1]) || 0) * config.otRate +
+                            (Number(row[2]) || 0) * 1.5 * config.otRate +
+                            (Number(row[3]) || 0) * 3 * config.otRate,
+                        0,
+                    );
+
+                    const netSalary =
+                        Number(config.salary) -
+                        Number(config.deduct) +
+                        Number(config.incentive) +
+                        otPay +
+                        allowanceCurrentCycle;
+
+                    // Sort cycle months chronologically and keep only the last 6
+                    const statsArray = Object.keys(monthlyStatsMap)
+                        .map((key) => ({
+                            label: key,
+                            value: monthlyStatsMap[key].total,
+                            date: monthlyStatsMap[key].dateObj,
+                        }))
+                        .sort((a, b) => a.date - b.date)
+                        .slice(-6);
+
+                    return {
+                        totalHrs: totalHrsCurrentCycle,
+                        otPay,
+                        netSalary,
+                        allowance: allowanceCurrentCycle,
+                        stats: statsArray,
+                        currentCycleData: currentCycleRows.reverse(),
+                    };
+                }, [data, activeTab, config]);
+
+                // ════════════════════════════════════════════════════════
+                // EVENT HANDLERS
+                // ════════════════════════════════════════════════════════
+
+                // Mark a car instalment as paid
+                const handlePayCar = async (no) => {
+                    if (!no) return;
+                    setLoading(true);
+                    try {
+                        await fetch(API_URL, {
+                            method: "POST",
+                            mode: "no-cors",
+                            body: JSON.stringify({ no, type: "pay_car" }),
+                        });
+                        setTimeout(() => fetchData("car"), 1500);
+                    } catch (e) {
+                        setLoading(false);
+                    }
+                };
+
+                // Submit a new OT / work-day entry
+                const handleAddOt = async (e) => {
+                    e.preventDefault();
+                    setLoading(true);
+
+                    // Sundays are always treated as holidays regardless of user selection
+                    const checkDate = new Date(otForm.date);
+                    const isSunday = checkDate.getDay() === 0;
+                    const finalDayType = isSunday ? "holiday" : otForm.dayType;
+
+                    try {
+                        await fetch(API_URL, {
+                            method: "POST",
+                            mode: "no-cors",
+                            body: JSON.stringify({
+                                type: "add_ot",
+                                ...otForm,
+                                dayType: finalDayType,
+                                salary: config.salary,
+                                deduct: config.deduct,
+                                food: config.food,
+                                gas: config.gas,
+                                foodOt: config.foodOt,
+                                incentive: config.incentive,
+                            }),
+                        });
+                        // Reset form fields (keep the date)
+                        setOtForm({
                             ...otForm,
-                            dayType: finalDayType,
-                            salary: config.salary,
-                            deduct: config.deduct,
-                            food: config.food,
-                            gas: config.gas,
-                            foodOt: config.foodOt,
-                            incentive: config.incentive
-                        })
-                    });
-                    setOtForm({ ...otForm, ot1: 0, ot15: 0, ot3: 0, note: '', dayType: 'work' });
-                    setTimeout(() => fetchData('ot'), 1000);
-                } catch (e) { setLoading(false); }
-            };
+                            ot1: 0,
+                            ot15: 0,
+                            ot3: 0,
+                            note: "",
+                            dayType: "work",
+                        });
+                        setTimeout(() => fetchData("ot"), 1000);
+                    } catch (e) {
+                        setLoading(false);
+                    }
+                };
 
-            const handleDeleteOt = async (rowIndex) => {
-                if(!confirm("ยืนยันการลบรายการนี้?")) return;
-                setLoading(true);
-                try {
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: JSON.stringify({ type: 'delete_ot', rowIndex })
-                    });
-                    setTimeout(() => fetchData('ot'), 1000);
-                } catch (e) { setLoading(false); }
-            };
+                // Delete an existing OT entry by row index
+                const handleDeleteOt = async (rowIndex) => {
+                    if (!confirm("ยืนยันการลบรายการนี้?")) return;
+                    setLoading(true);
+                    try {
+                        await fetch(API_URL, {
+                            method: "POST",
+                            mode: "no-cors",
+                            body: JSON.stringify({
+                                type: "delete_ot",
+                                rowIndex,
+                            }),
+                        });
+                        setTimeout(() => fetchData("ot"), 1000);
+                    } catch (e) {
+                        setLoading(false);
+                    }
+                };
 
-            const renderOtDetails = (row) => {
-                const parts = [];
-                if (Number(row[1]) > 0) parts.push(`x1.0: ${row[1]}`);
-                if (Number(row[2]) > 0) parts.push(`x1.5: ${row[2]}`);
-                if (Number(row[3]) > 0) parts.push(`x3.0: ${row[3]}`);
-                return parts.length > 0 ? parts.join(' | ') : (row[6] > 0 ? 'มาทำงาน' : 'วันหยุด/ลา');
-            };
+                // Build a short OT-hours label for a data row
+                const renderOtDetails = (row) => {
+                    const parts = [];
+                    if (Number(row[1]) > 0) parts.push(`x1.0: ${row[1]}`);
+                    if (Number(row[2]) > 0) parts.push(`x1.5: ${row[2]}`);
+                    if (Number(row[3]) > 0) parts.push(`x3.0: ${row[3]}`);
+                    return parts.length > 0
+                        ? parts.join(" | ")
+                        : row[6] > 0
+                          ? "มาทำงาน"
+                          : "วันหยุด/ลา";
+                };
 
-            return (
-                <div className="min-h-screen flex flex-col lg:flex-row font-sans overflow-hidden h-screen transition-colors duration-300">
-                    <aside className={`w-full lg:w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-6 flex flex-col shrink-0 fixed lg:static top-0 left-0 right-0 z-50 mobile-header ${showHeader ? 'translate-y-0' : 'mobile-header-hidden lg:translate-y-0'}`}>
-                        <div className="flex items-center justify-between lg:justify-start lg:gap-3 mb-4 lg:mb-10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-white font-black italic shadow-lg shadow-green-500/20">MH</div>
-                                <h1 className="text-2xl font-black italic text-green-600 tracking-tighter">MY HUB</h1>
-                            </div>
-                            <button onClick={() => setDarkMode(!darkMode)} className="lg:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
-                                {darkMode ? '☀️' : '🌙'}
-                            </button>
-                        </div>
-                        <nav className="flex-1 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
-                            <button onClick={() => setActiveTab('car')} className={`flex-1 lg:flex-none flex items-center justify-center lg:justify-start gap-4 p-3 lg:p-4 rounded-2xl transition-all font-bold whitespace-nowrap ${activeTab === 'car' ? 'bg-green-600 text-white shadow-lg shadow-green-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-                                <span className="lg:inline hidden">🚗</span>
-                                <span>งวดรถ</span>
-                            </button>
-                            <button onClick={() => setActiveTab('ot')} className={`flex-1 lg:flex-none flex items-center justify-center lg:justify-start gap-4 p-3 lg:p-4 rounded-2xl transition-all font-bold whitespace-nowrap ${activeTab === 'ot' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-                                <span className="lg:inline hidden">⏱️</span>
-                                <span>OT & รายได้</span>
-                            </button>
-                        </nav>
-                        <button onClick={() => setDarkMode(!darkMode)} className="hidden lg:flex mt-6 items-center justify-center gap-2 p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 font-bold hover:bg-slate-200">
-                            {darkMode ? '☀️ Light' : '🌙 Dark'}
-                        </button>
-                    </aside>
+                // Format any date value from the API into dd/MM/yyyy (Buddhist era year)
+                // Handles: "yyyy-MM-dd" strings, raw Date strings, or empty values.
+                const formatCarDate = (val) => {
+                    if (!val) return "--/--/----";
+                    const d = new Date(val);
+                    if (isNaN(d.getTime())) return "--/--/----";
+                    const dd = String(d.getDate()).padStart(2, "0");
+                    const mm = String(d.getMonth() + 1).padStart(2, "0");
+                    const yyyy = d.getFullYear();
+                    return `${dd}/${mm}/${yyyy}`;
+                };
 
-                    <main className="flex-1 p-4 lg:p-10 overflow-y-auto custom-scroll pt-32 lg:pt-10">
-                        {activeTab === 'car' ? (
-                            <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
-                                <h2 className="text-3xl font-black dark:text-white">งวดรถ</h2>
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                    <div className="lg:col-span-5 space-y-6">
-                                        <div className="bg-green-700 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-                                            <div className="relative z-10 space-y-8">
-                                                <div>
-                                                    <p className="text-green-200 text-sm font-bold uppercase">ยอดค่าเช่าซื้อคงเหลือ</p>
-                                                    <h3 className="text-4xl lg:text-5xl font-black">฿{carInfo.remainingAmount?.toLocaleString(undefined, {minimumFractionDigits: 2})}</h3>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <div className="flex justify-between items-end text-xs font-bold uppercase tracking-wider text-green-100 italic">
-                                                        <span>ความคืบหน้า ({carInfo.paidCount}/{config.totalInstallments})</span>
-                                                        <span className="text-xl">{carInfo.progressPercent}%</span>
-                                                    </div>
-                                                    <div className="h-4 bg-green-900/40 rounded-full border border-green-600/30 overflow-hidden">
-                                                        <div className="h-full bg-yellow-400 rounded-full transition-all duration-1000" style={{ width: `${carInfo.progressPercent}%` }}></div>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 text-slate-800 dark:text-white shadow-xl">
-                                                    <div className="flex items-center gap-2 mb-4">
-                                                        <div className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></div>
-                                                        <span className="text-orange-500 font-black text-xs uppercase">งวดถัดไปที่ {carInfo.nextInstallment?.[0] || '-'}</span>
-                                                    </div>
-                                                    <h4 className="text-3xl font-black mb-1">{carInfo.nextInstallment?.[1] || '--/--/----'}</h4>
-                                                    <p className="text-slate-400 text-sm font-bold mb-6">ยอดชำระ: ฿{config.carPrice.toLocaleString()}</p>
-                                                    <button onClick={() => handlePayCar(carInfo.nextInstallment?.[0])} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl hover:bg-green-700 transition-all flex items-center justify-center gap-2">ยืนยันชำระงวดนี้</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                // ════════════════════════════════════════════════════════
+                // RENDER
+                // ════════════════════════════════════════════════════════
+                return (
+                    <div className="min-h-screen flex flex-col lg:flex-row font-sans overflow-hidden h-screen transition-colors duration-300">
+                        {/* ── Sidebar / Mobile Top Nav ─────────────────────── */}
+                        <aside
+                            className={`w-full lg:w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-6 flex flex-col shrink-0 fixed lg:static top-0 left-0 right-0 z-50 mobile-header ${showHeader ? "translate-y-0" : "mobile-header-hidden lg:translate-y-0"}`}
+                        >
+                            {/* Logo */}
+                            <div className="flex items-center justify-between lg:justify-start lg:gap-3 mb-4 lg:mb-10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-white font-black italic shadow-lg shadow-green-500/20">
+                                        MH
                                     </div>
-                                    <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex flex-col h-[70vh] overflow-hidden">
-                                        <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                            <h4 className="font-black text-slate-700 dark:text-slate-200 uppercase text-xs tracking-widest">ประวัติการชำระเงิน</h4>
-                                            <span className="text-[10px] font-black bg-green-100 dark:bg-green-900/30 text-green-600 px-3 py-1 rounded-full uppercase">Complete</span>
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-3 custom-scroll">
-                                            {carInfo.sortedData?.map((row, idx) => (
-                                                <div key={idx} className={`p-4 rounded-2xl border flex items-center justify-between ${row[3] === 'จ่ายแล้ว' ? 'bg-slate-50/40 dark:bg-slate-800/20 border-slate-50 dark:border-slate-800' : 'bg-white dark:bg-slate-800 border-blue-100 shadow-sm'}`}>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${row[3] === 'จ่ายแล้ว' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>{row[0]}</div>
-                                                        <div>
-                                                            <p className="text-[10px] text-slate-400 font-black uppercase">{row[3] === 'จ่ายแล้ว' ? `ชำระแล้วเมื่อ ${row[1]}` : 'รอชำระเงิน'}</p>
-                                                            <p className="font-black text-slate-700 dark:text-white tracking-tight">฿{config.carPrice.toLocaleString()}</p>
+                                    <h1 className="text-2xl font-black italic text-green-600 tracking-tighter">
+                                        MY HUB
+                                    </h1>
+                                </div>
+                                {/* Dark mode toggle — mobile only */}
+                                <button
+                                    onClick={() => setDarkMode(!darkMode)}
+                                    className="lg:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800"
+                                >
+                                    {darkMode ? "☀️" : "🌙"}
+                                </button>
+                            </div>
+
+                            {/* Tab navigation */}
+                            <nav className="flex-1 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
+                                <button
+                                    onClick={() => setActiveTab("car")}
+                                    className={`flex-1 lg:flex-none flex items-center justify-center lg:justify-start gap-4 p-3 lg:p-4 rounded-2xl transition-all font-bold whitespace-nowrap ${activeTab === "car" ? "bg-green-600 text-white shadow-lg shadow-green-500/30" : "text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+                                >
+                                    <span className="lg:inline hidden">🚗</span>
+                                    <span>งวดรถ</span>
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("ot")}
+                                    className={`flex-1 lg:flex-none flex items-center justify-center lg:justify-start gap-4 p-3 lg:p-4 rounded-2xl transition-all font-bold whitespace-nowrap ${activeTab === "ot" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" : "text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+                                >
+                                    <span className="lg:inline hidden">⏱️</span>
+                                    <span>OT & รายได้</span>
+                                </button>
+                            </nav>
+
+                            {/* Dark mode toggle — desktop only */}
+                            <button
+                                onClick={() => setDarkMode(!darkMode)}
+                                className="hidden lg:flex mt-6 items-center justify-center gap-2 p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 font-bold hover:bg-slate-200"
+                            >
+                                {darkMode ? "☀️ Light" : "🌙 Dark"}
+                            </button>
+                        </aside>
+
+                        {/* ── Main Content ─────────────────────────────────── */}
+                        <main className="flex-1 p-4 lg:p-10 overflow-y-auto custom-scroll pt-32 lg:pt-10">
+                            {/* ══ CAR INSTALMENT TAB ════════════════════════ */}
+                            {activeTab === "car" ? (
+                                <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+                                    <h2 className="text-3xl font-black dark:text-white">
+                                        งวดรถ
+                                    </h2>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                        {/* Summary card */}
+                                        <div className="lg:col-span-5 space-y-6">
+                                            <div className="bg-green-700 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                                                <div className="relative z-10 space-y-8">
+                                                    {/* Remaining balance */}
+                                                    <div>
+                                                        <p className="text-green-200 text-sm font-bold uppercase">
+                                                            ยอดค่าเช่าซื้อคงเหลือ
+                                                        </p>
+                                                        <h3 className="text-4xl lg:text-5xl font-black">
+                                                            ฿
+                                                            {carInfo.remainingAmount?.toLocaleString(
+                                                                undefined,
+                                                                {
+                                                                    minimumFractionDigits: 2,
+                                                                },
+                                                            )}
+                                                        </h3>
+                                                    </div>
+
+                                                    {/* Progress bar */}
+                                                    <div className="space-y-3">
+                                                        <div className="flex justify-between items-end text-xs font-bold uppercase tracking-wider text-green-100 italic">
+                                                            <span>
+                                                                ความคืบหน้า (
+                                                                {
+                                                                    carInfo.paidCount
+                                                                }
+                                                                /
+                                                                {
+                                                                    config.totalInstallments
+                                                                }
+                                                                )
+                                                            </span>
+                                                            <span className="text-xl">
+                                                                {
+                                                                    carInfo.progressPercent
+                                                                }
+                                                                %
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-4 bg-green-900/40 rounded-full border border-green-600/30 overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-yellow-400 rounded-full transition-all duration-1000"
+                                                                style={{
+                                                                    width: `${carInfo.progressPercent}%`,
+                                                                }}
+                                                            ></div>
                                                         </div>
                                                     </div>
-                                                    {row[3] === 'จ่ายแล้ว' ? (
-                                                        <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center shadow-md"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg></div>
-                                                    ) : (
-                                                        <button onClick={() => handlePayCar(row[0])} className="bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-blue-500/20 hover:bg-blue-700">จ่าย</button>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            // ส่วนที่อัพเดตตามระบุ
-                            <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-right-4 duration-500">
-                                <div className="flex justify-between items-center">
-                                    <h2 className="text-3xl font-black dark:text-white">บันทึก OT</h2>
-                                    <button onClick={() => setShowSettings(!showSettings)} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all min-w-fit ${showSettings ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
-                                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        <span className="text-sm whitespace-nowrap">{showSettings ? 'ปิดตั้งค่า' : 'ตั้งค่า'}</span>
-                                    </button>
-                                </div>
 
-                                {showSettings && (
-                                    <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-3xl grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 animate-in fade-in zoom-in-95 duration-300">
-                                        <div className="col-span-full font-bold text-[10px] text-slate-400 tracking-widest uppercase mb-1">ตั้งค่าตัวเลขการคำนวณ</div>
-                                        <div>
-                                            <label className="text-[10px] block mb-1 text-slate-400 font-bold">เงินเดือน</label>
-                                            <input type="number" className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none" value={config.salary} onChange={e => setConfig({...config, salary: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] block mb-1 text-slate-400 font-bold">รายการหัก</label>
-                                            <input type="number" className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none" value={config.deduct} onChange={e => setConfig({...config, deduct: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] block mb-1 text-slate-400 font-bold">เบี้ยขยัน</label>
-                                            <input type="number" className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none text-green-500" value={config.incentive} onChange={e => setConfig({...config, incentive: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] block mb-1 text-slate-400 font-bold">เรท OT/ชม.</label>
-                                            <input type="number" className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none" value={config.otRate} onChange={e => setConfig({...config, otRate: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] block mb-1 text-slate-400 font-bold">ค่าข้าวปกติ</label>
-                                            <input type="number" className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none" value={config.food} onChange={e => setConfig({...config, food: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] block mb-1 text-slate-400 font-bold text-blue-500">ค่าข้าว OT</label>
-                                            <input type="number" className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none border-b-2 border-blue-500" value={config.foodOt} onChange={e => setConfig({...config, foodOt: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] block mb-1 text-slate-400 font-bold">ค่าน้ำมัน</label>
-                                            <input type="number" className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none" value={config.gas} onChange={e => setConfig({...config, gas: e.target.value})} />
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-blue-600 text-white p-8 rounded-[2.5rem] shadow-2xl">
-                                        <p className="opacity-70 text-sm font-bold uppercase italic">รายรับสุทธิ (รวมเบี้ยขยัน ฿{config.incentive})</p>
-                                        <h3 className="text-5xl font-black mt-2 tracking-tighter">฿{otSummary.netSalary.toLocaleString(undefined, {minimumFractionDigits: 2})}</h3>
-                                    </div>
-                                    <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border dark:border-slate-800 shadow-sm flex flex-col justify-center">
-                                        <p className="text-slate-400 text-sm font-bold uppercase">สะสม OT รอบนี้</p>
-                                        <h3 className="text-4xl font-black dark:text-white mt-1">
-                                            {otSummary.totalHrs.toFixed(1)} <span className="text-lg text-slate-300 italic font-normal">ชม.</span>
-                                        </h3>
-                                        <p className="text-green-500 text-sm font-black mt-2">+ ฿{otSummary.otPay.toLocaleString()} (จากแรง OT เท่านั้น)</p>
-                                    </div>
-                                </div>
-
-                                {otSummary.stats.length > 0 && (
-                                    <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-                                        <div className="flex justify-between items-center mb-4 px-2">
-                                            <h4 className="font-black text-slate-700 dark:text-white text-sm uppercase">สถิติรายรอบเดือน (รวมทุกรายการ)</h4>
-                                        </div>
-                                        <div className="flex items-end gap-6 h-48 overflow-x-auto pb-4 pt-4 px-4 custom-scroll text-center">
-                                            {otSummary.stats.map((stat, idx) => {
-                                                const currentMax = Math.max(...otSummary.stats.map(s => s.value));
-                                                const maxVal = currentMax * 1.1; 
-                                                const barHeight = Math.max(15, (stat.value / maxVal) * 100);
-                                                return (
-                                                    <div key={idx} className="flex flex-col items-center gap-2 group min-w-[70px] flex-1">
-                                                        <span className="text-[10px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                                            ฿{stat.value.toLocaleString(undefined, {maximumFractionDigits: 0})}
-                                                        </span>
-                                                        <div 
-                                                            className="w-full max-w-[40px] bg-gradient-to-t from-blue-700 via-blue-500 to-blue-400 rounded-2xl transition-all hover:scale-105 shadow-lg shadow-blue-500/20" 
-                                                            style={{ height: `${barHeight}%`, minHeight: '10px' }}
-                                                        ></div>
-                                                        <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase">{stat.label}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                                    <form onSubmit={handleAddOt} className="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border dark:border-slate-800 shadow-sm space-y-6">
-                                        <h4 className="font-black text-slate-700 dark:text-slate-200 flex items-center gap-2 uppercase tracking-tight">
-                                            <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl">+</span>
-                                            บันทึกสถานะรายวัน
-                                        </h4>
-                                        <div className="space-y-4">
-                                            <input type="date" value={otForm.date} onChange={(e) => setOtForm({...otForm, date: e.target.value})} className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-none font-bold outline-none" />
-                                            <div className="flex gap-2">
-                                                <button type="button" onClick={() => setOtForm({...otForm, dayType: 'work'})} className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${otForm.dayType === 'work' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>🏢 วันทำงาน</button>
-                                                <button type="button" onClick={() => setOtForm({...otForm, dayType: 'holiday'})} className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${otForm.dayType === 'holiday' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>🏖️ วันหยุด</button>
-                                            </div>
-                                            <div className={`grid grid-cols-3 gap-3 transition-opacity duration-300 ${otForm.dayType === 'holiday' ? 'opacity-30 pointer-events-none' : ''}`}>
-                                                <div>
-                                                    <label className="block text-[10px] text-center font-bold text-slate-400 mb-1">x1.0</label>
-                                                    <input type="number" step="0.5" className="w-full bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border-none text-center font-bold outline-none focus:ring-2 ring-blue-500/20" value={otForm.ot1} onChange={e => setOtForm({...otForm, ot1: e.target.value})} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[10px] text-center font-bold text-slate-400 mb-1">x1.5</label>
-                                                    <input type="number" step="0.5" className="w-full bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border-none text-center font-bold outline-none focus:ring-2 ring-blue-500/20" value={otForm.ot15} onChange={e => setOtForm({...otForm, ot15: e.target.value})} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[10px] text-center font-bold text-slate-400 mb-1">x3.0</label>
-                                                    <input type="number" step="0.5" className="w-full bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border-none text-center font-bold outline-none focus:ring-2 ring-blue-500/20" value={otForm.ot3} onChange={e => setOtForm({...otForm, ot3: e.target.value})} />
-                                                </div>
-                                            </div>
-                                            <textarea placeholder="หมายเหตุ..." className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-none h-24 font-bold outline-none resize-none" value={otForm.note} onChange={e => setOtForm({...otForm, note: e.target.value})}></textarea>
-                                            <button type="submit" className={`w-full font-black py-4 rounded-2xl shadow-lg transition-all ${otForm.dayType === 'work' ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-orange-500 text-white shadow-orange-500/30'}`}>{otForm.dayType === 'work' ? 'บันทึกวันทำงาน' : 'บันทึกวันหยุด'}</button>
-                                        </div>
-                                    </form>
-
-                                    <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col h-[60vh]">
-                                        <div className="p-6 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/20 rounded-t-[2.5rem]">
-                                            <h4 className="font-black text-slate-500 uppercase text-[10px] tracking-widest">ประวัติย่อย (เฉพาะรอบ 21-20 ปัจจุบัน)</h4>
-                                            <span className="text-[10px] font-black text-blue-600 uppercase">สวัสดิการรอบนี้: ฿{otSummary.allowance.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4 custom-scroll">
-                                            {otSummary.currentCycleData.length > 0 ? (
-                                                otSummary.currentCycleData.map((row, idx) => (
-                                                    <div key={idx} className="group relative flex items-center justify-between p-4 bg-slate-50/30 dark:bg-slate-800/10 rounded-2xl border border-transparent hover:border-blue-200 dark:hover:border-blue-900 transition-all">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-black text-slate-700 dark:text-slate-200">{new Date(row[0]).toLocaleDateString('th-TH', {day: '2-digit', month: 'short'})}</span>
-                                                            <span className="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[150px]">{row[9] || '-'}</span>
+                                                    {/* Next instalment action */}
+                                                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 text-slate-800 dark:text-white shadow-xl">
+                                                        <div className="flex items-center gap-2 mb-4">
+                                                            <div className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></div>
+                                                            <span className="text-orange-500 font-black text-xs uppercase">
+                                                                งวดถัดไปที่{" "}
+                                                                {carInfo
+                                                                    .nextInstallment?.[0] ||
+                                                                    "-"}
+                                                            </span>
                                                         </div>
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="text-right flex flex-col items-end">
-                                                                <span className="text-[10px] font-black text-slate-400 italic">{renderOtDetails(row)}</span>
-                                                                <span className={`font-black ${Number(row[6]) > 0 || Number(row[1]) > 0 ? 'text-blue-600' : 'text-slate-300'}`}>
-                                                                    ฿{((((Number(row[1])||0) + (Number(row[2])*1.5) + (Number(row[3])*3)) * config.otRate) + (Number(row[6])||0) + (Number(row[7])||0) + (Number(row[8])||0)).toLocaleString(undefined, {maximumFractionDigits: 0})}
-                                                                </span>
+                                                        <h4 className="text-3xl font-black mb-1">
+                                                            {formatCarDate(
+                                                                carInfo
+                                                                    .nextInstallment?.[1],
+                                                            )}
+                                                        </h4>
+                                                        <p className="text-slate-400 text-sm font-bold mb-6">
+                                                            ยอดชำระ: ฿
+                                                            {config.carPrice.toLocaleString()}
+                                                        </p>
+                                                        <button
+                                                            onClick={() =>
+                                                                handlePayCar(
+                                                                    carInfo
+                                                                        .nextInstallment?.[0],
+                                                                )
+                                                            }
+                                                            className="w-full bg-green-600 text-white font-black py-4 rounded-2xl hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            ยืนยันชำระงวดนี้
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Payment history list */}
+                                        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex flex-col h-[70vh] overflow-hidden">
+                                            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                                <h4 className="font-black text-slate-700 dark:text-slate-200 uppercase text-xs tracking-widest">
+                                                    ประวัติการชำระเงิน
+                                                </h4>
+                                                <span className="text-[10px] font-black bg-green-100 dark:bg-green-900/30 text-green-600 px-3 py-1 rounded-full uppercase">
+                                                    Complete
+                                                </span>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-3 custom-scroll">
+                                                {carInfo.sortedData?.map(
+                                                    (row, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className={`p-4 rounded-2xl border flex items-center justify-between ${row[3] === "จ่ายแล้ว" ? "bg-slate-50/40 dark:bg-slate-800/20 border-slate-50 dark:border-slate-800" : "bg-white dark:bg-slate-800 border-blue-100 shadow-sm"}`}
+                                                        >
+                                                            <div className="flex items-center gap-4">
+                                                                <div
+                                                                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${row[3] === "จ่ายแล้ว" ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}
+                                                                >
+                                                                    {row[0]}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] text-slate-400 font-black uppercase">
+                                                                        {row[3] ===
+                                                                        "จ่ายแล้ว"
+                                                                            ? `ชำระแล้วเมื่อ ${formatCarDate(row[1])}`
+                                                                            : "รอชำระเงิน"}
+                                                                    </p>
+                                                                    <p className="font-black text-slate-700 dark:text-white tracking-tight">
+                                                                        ฿
+                                                                        {config.carPrice.toLocaleString()}
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteOt(row[10]); }} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                            </button>
+                                                            {row[3] ===
+                                                            "จ่ายแล้ว" ? (
+                                                                <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center shadow-md">
+                                                                    <svg
+                                                                        className="w-5 h-5"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        viewBox="0 0 24 24"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth="3"
+                                                                            d="M5 13l4 4L19 7"
+                                                                        />
+                                                                    </svg>
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() =>
+                                                                        handlePayCar(
+                                                                            row[0],
+                                                                        )
+                                                                    }
+                                                                    className="bg-blue-600 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+                                                                >
+                                                                    จ่าย
+                                                                </button>
+                                                            )}
                                                         </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2">
-                                                    <svg className="w-12 h-12 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                    <p className="font-bold text-sm">ยังไม่มีข้อมูลในช่วง 21 - 20 นี้</p>
-                                                </div>
-                                            )}
+                                                    ),
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                            ) : (
+                                /* ══ OT & INCOME TAB ══════════════════════════ */
+                                <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-right-4 duration-500">
+                                    {/* Tab header with settings toggle */}
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-3xl font-black dark:text-white">
+                                            บันทึก OT
+                                        </h2>
+                                        <button
+                                            onClick={() =>
+                                                setShowSettings(!showSettings)
+                                            }
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all min-w-fit ${showSettings ? "bg-blue-50 text-blue-600" : "text-slate-400 hover:text-slate-600"}`}
+                                        >
+                                            <span className="text-lg">⚙️</span>
+                                            <span className="text-sm whitespace-nowrap">
+                                                {showSettings
+                                                    ? "ปิดตั้งค่า"
+                                                    : "ตั้งค่า"}
+                                            </span>
+                                        </button>
+                                    </div>
+
+                                    {/* Settings panel (collapsible) */}
+                                    {showSettings && (
+                                        <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-3xl grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 animate-in fade-in zoom-in-95 duration-300">
+                                            <div className="col-span-full font-bold text-[10px] text-slate-400 tracking-widest uppercase mb-1">
+                                                ตั้งค่าตัวเลขการคำนวณ
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] block mb-1 text-slate-400 font-bold">
+                                                    เงินเดือน
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none"
+                                                    value={config.salary}
+                                                    onChange={(e) =>
+                                                        setConfig({
+                                                            ...config,
+                                                            salary: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] block mb-1 text-slate-400 font-bold">
+                                                    รายการหัก
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none"
+                                                    value={config.deduct}
+                                                    onChange={(e) =>
+                                                        setConfig({
+                                                            ...config,
+                                                            deduct: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] block mb-1 text-slate-400 font-bold">
+                                                    เบี้ยขยัน
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none text-green-500"
+                                                    value={config.incentive}
+                                                    onChange={(e) =>
+                                                        setConfig({
+                                                            ...config,
+                                                            incentive:
+                                                                e.target.value,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] block mb-1 text-slate-400 font-bold">
+                                                    เรท OT/ชม.
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none"
+                                                    value={config.otRate}
+                                                    onChange={(e) =>
+                                                        setConfig({
+                                                            ...config,
+                                                            otRate: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] block mb-1 text-slate-400 font-bold">
+                                                    ค่าข้าวปกติ
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none"
+                                                    value={config.food}
+                                                    onChange={(e) =>
+                                                        setConfig({
+                                                            ...config,
+                                                            food: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] block mb-1 text-slate-400 font-bold">
+                                                    ค่าข้าว OT
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none"
+                                                    value={config.foodOt}
+                                                    onChange={(e) =>
+                                                        setConfig({
+                                                            ...config,
+                                                            foodOt: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] block mb-1 text-slate-400 font-bold">
+                                                    ค่าน้ำมัน
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-white dark:bg-slate-800 p-2 rounded-xl text-sm font-bold outline-none"
+                                                    value={config.gas}
+                                                    onChange={(e) =>
+                                                        setConfig({
+                                                            ...config,
+                                                            gas: e.target.value,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Summary cards: net salary + OT hours */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="bg-blue-600 text-white p-8 rounded-[2.5rem] shadow-2xl">
+                                            <p className="opacity-70 text-sm font-bold uppercase italic">
+                                                รายรับสุทธิ (รวมเบี้ยขยัน ฿
+                                                {config.incentive})
+                                            </p>
+                                            <h3 className="text-5xl font-black mt-2 tracking-tighter">
+                                                ฿
+                                                {otSummary.netSalary.toLocaleString(
+                                                    undefined,
+                                                    {
+                                                        minimumFractionDigits: 2,
+                                                    },
+                                                )}
+                                            </h3>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border dark:border-slate-800 shadow-sm flex flex-col justify-center">
+                                            <p className="text-slate-400 text-sm font-bold uppercase">
+                                                สะสม OT รอบนี้
+                                            </p>
+                                            <h3 className="text-4xl font-black dark:text-white mt-1">
+                                                {(() => {
+                                                    // Build cycle boundaries as YYYYMMDD integers (e.g. 20260120)
+                                                    // — integer comparison is immune to timezone/Date-object issues.
+                                                    const now = new Date();
+                                                    const d = now.getDate();
+                                                    const toInt = (dt) =>
+                                                        dt.getFullYear() *
+                                                            10000 +
+                                                        (dt.getMonth() + 1) *
+                                                            100 +
+                                                        dt.getDate();
+                                                    const start =
+                                                        d <= 20
+                                                            ? toInt(
+                                                                  new Date(
+                                                                      now.getFullYear(),
+                                                                      now.getMonth() -
+                                                                          1,
+                                                                      21,
+                                                                  ),
+                                                              )
+                                                            : toInt(
+                                                                  new Date(
+                                                                      now.getFullYear(),
+                                                                      now.getMonth(),
+                                                                      21,
+                                                                  ),
+                                                              );
+                                                    const end =
+                                                        d <= 20
+                                                            ? toInt(
+                                                                  new Date(
+                                                                      now.getFullYear(),
+                                                                      now.getMonth(),
+                                                                      20,
+                                                                  ),
+                                                              )
+                                                            : toInt(
+                                                                  new Date(
+                                                                      now.getFullYear(),
+                                                                      now.getMonth() +
+                                                                          1,
+                                                                      20,
+                                                                  ),
+                                                              );
+
+                                                    // Filter raw `data` directly — no memo, no currentCycleData
+                                                    const cycleRows =
+                                                        data.filter((row) => {
+                                                            const rd = new Date(
+                                                                row[0],
+                                                            );
+                                                            const n = toInt(
+                                                                new Date(
+                                                                    rd.getFullYear(),
+                                                                    rd.getMonth(),
+                                                                    rd.getDate(),
+                                                                ),
+                                                            );
+                                                            return (
+                                                                n >= start &&
+                                                                n <= end
+                                                            );
+                                                        });
+
+                                                    // Sum raw hours (col B=x1, C=x1.5, D=x3 store actual hours worked)
+                                                    const hrs =
+                                                        cycleRows.reduce(
+                                                            (sum, row) =>
+                                                                sum +
+                                                                (Number(
+                                                                    row[1],
+                                                                ) || 0) +
+                                                                (Number(
+                                                                    row[2],
+                                                                ) || 0) +
+                                                                (Number(
+                                                                    row[3],
+                                                                ) || 0),
+                                                            0,
+                                                        );
+
+                                                    // OT pay applies the rate multipliers to the money only
+                                                    const pay =
+                                                        cycleRows.reduce(
+                                                            (sum, row) =>
+                                                                sum +
+                                                                (Number(
+                                                                    row[1],
+                                                                ) || 0) *
+                                                                    config.otRate +
+                                                                (Number(
+                                                                    row[2],
+                                                                ) || 0) *
+                                                                    1.5 *
+                                                                    config.otRate +
+                                                                (Number(
+                                                                    row[3],
+                                                                ) || 0) *
+                                                                    3 *
+                                                                    config.otRate,
+                                                            0,
+                                                        );
+
+                                                    return (
+                                                        <>
+                                                            {hrs.toFixed(1)}
+                                                            <span className="text-lg text-slate-300 italic font-normal">
+                                                                {" "}
+                                                                ชม.
+                                                            </span>
+                                                            <p className="text-green-500 text-sm font-black mt-2">
+                                                                + ฿
+                                                                {pay.toLocaleString(
+                                                                    undefined,
+                                                                    {
+                                                                        maximumFractionDigits: 0,
+                                                                    },
+                                                                )}{" "}
+                                                                (จากแรง OT
+                                                                เท่านั้น)
+                                                            </p>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </h3>
+                                        </div>
+                                    </div>
+
+                                    {/* Bar chart: income per pay cycle */}
+                                    {otSummary.stats.length > 0 && (
+                                        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+                                            <div className="flex justify-between items-center mb-4 px-2">
+                                                <h4 className="font-black text-slate-700 dark:text-white text-sm uppercase">
+                                                    สถิติรายรอบเดือน
+                                                    (รวมทุกรายการ)
+                                                </h4>
+                                            </div>
+                                            {/*
+                                                BAR CHART — why px not %:
+                                                With `items-end` on the outer flex, each column div
+                                                shrinks to its content height. A `height: X%` on the
+                                                bar is then X% of that tiny content height, not X% of
+                                                the container — producing nearly-invisible bars.
+                                                Fix: compute bar height in px against a fixed scale
+                                                (BAR_MAX_PX) so the outer flex alignment is irrelevant.
+                                            */}
+                                            <div className="flex items-end gap-6 h-52 overflow-x-auto pb-6 pt-2 px-4 custom-scroll text-center">
+                                                {(() => {
+                                                    const BAR_MAX_PX = 140; // tallest bar in pixels
+                                                    const maxVal =
+                                                        Math.max(
+                                                            ...otSummary.stats.map(
+                                                                (s) => s.value,
+                                                            ),
+                                                        ) * 1.1;
+                                                    return otSummary.stats.map(
+                                                        (stat, idx) => {
+                                                            const barPx =
+                                                                Math.max(
+                                                                    10,
+                                                                    Math.round(
+                                                                        (stat.value /
+                                                                            maxVal) *
+                                                                            BAR_MAX_PX,
+                                                                    ),
+                                                                );
+                                                            return (
+                                                                <div
+                                                                    key={idx}
+                                                                    className="flex flex-col items-center gap-2 group min-w-[70px] flex-1"
+                                                                >
+                                                                    {/* Value tooltip — shown on hover */}
+                                                                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                                                        ฿
+                                                                        {stat.value.toLocaleString(
+                                                                            undefined,
+                                                                            {
+                                                                                maximumFractionDigits: 0,
+                                                                            },
+                                                                        )}
+                                                                    </span>
+                                                                    {/* Bar — height in px so scale is predictable */}
+                                                                    <div
+                                                                        className="w-full max-w-[40px] bg-gradient-to-t from-blue-700 via-blue-500 to-blue-400 rounded-2xl transition-all hover:scale-105 shadow-lg shadow-blue-500/20"
+                                                                        style={{
+                                                                            height: `${barPx}px`,
+                                                                        }}
+                                                                    ></div>
+                                                                    {/* Month label */}
+                                                                    <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase">
+                                                                        {
+                                                                            stat.label
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        },
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* OT entry form + history list */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                        {/* Add OT form */}
+                                        <form
+                                            onSubmit={handleAddOt}
+                                            className="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border dark:border-slate-800 shadow-sm space-y-6"
+                                        >
+                                            <h4 className="font-black text-slate-700 dark:text-slate-200 flex items-center gap-2 uppercase tracking-tight">
+                                                <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+                                                    +
+                                                </span>
+                                                บันทึกสถานะรายวัน
+                                            </h4>
+                                            <div className="space-y-4">
+                                                {/* Date picker */}
+                                                <input
+                                                    type="date"
+                                                    value={otForm.date}
+                                                    onChange={(e) =>
+                                                        setOtForm({
+                                                            ...otForm,
+                                                            date: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                    className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-none font-bold outline-none"
+                                                />
+
+                                                {/* Work / Holiday toggle */}
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setOtForm({
+                                                                ...otForm,
+                                                                dayType: "work",
+                                                            })
+                                                        }
+                                                        className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${otForm.dayType === "work" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}
+                                                    >
+                                                        🏢 วันทำงาน
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setOtForm({
+                                                                ...otForm,
+                                                                dayType:
+                                                                    "holiday",
+                                                            })
+                                                        }
+                                                        className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${otForm.dayType === "holiday" ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}
+                                                    >
+                                                        🏖️ วันหยุด
+                                                    </button>
+                                                </div>
+
+                                                {/* OT hour inputs (hidden on holiday) */}
+                                                <div
+                                                    className={`grid grid-cols-3 gap-3 transition-opacity duration-300 ${otForm.dayType === "holiday" ? "opacity-30 pointer-events-none" : ""}`}
+                                                >
+                                                    <div>
+                                                        <input
+                                                            type="number"
+                                                            step="0.5"
+                                                            min="0"
+                                                            placeholder="1"
+                                                            className="w-full bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border-none text-center font-bold outline-none focus:ring-2 ring-blue-500/20"
+                                                            value={
+                                                                otForm.ot1 ===
+                                                                    0 ||
+                                                                otForm.ot1 ===
+                                                                    "0"
+                                                                    ? ""
+                                                                    : otForm.ot1
+                                                            }
+                                                            onChange={(e) =>
+                                                                setOtForm({
+                                                                    ...otForm,
+                                                                    ot1:
+                                                                        e.target
+                                                                            .value ===
+                                                                        ""
+                                                                            ? 0
+                                                                            : e
+                                                                                  .target
+                                                                                  .value,
+                                                                })
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <input
+                                                            type="number"
+                                                            step="0.5"
+                                                            min="0"
+                                                            placeholder="1.5"
+                                                            className="w-full bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border-none text-center font-bold outline-none focus:ring-2 ring-blue-500/20"
+                                                            value={
+                                                                otForm.ot15 ===
+                                                                    0 ||
+                                                                otForm.ot15 ===
+                                                                    "0"
+                                                                    ? ""
+                                                                    : otForm.ot15
+                                                            }
+                                                            onChange={(e) =>
+                                                                setOtForm({
+                                                                    ...otForm,
+                                                                    ot15:
+                                                                        e.target
+                                                                            .value ===
+                                                                        ""
+                                                                            ? 0
+                                                                            : e
+                                                                                  .target
+                                                                                  .value,
+                                                                })
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <input
+                                                            type="number"
+                                                            step="0.5"
+                                                            min="0"
+                                                            placeholder="3"
+                                                            className="w-full bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border-none text-center font-bold outline-none focus:ring-2 ring-blue-500/20"
+                                                            value={
+                                                                otForm.ot3 ===
+                                                                    0 ||
+                                                                otForm.ot3 ===
+                                                                    "0"
+                                                                    ? ""
+                                                                    : otForm.ot3
+                                                            }
+                                                            onChange={(e) =>
+                                                                setOtForm({
+                                                                    ...otForm,
+                                                                    ot3:
+                                                                        e.target
+                                                                            .value ===
+                                                                        ""
+                                                                            ? 0
+                                                                            : e
+                                                                                  .target
+                                                                                  .value,
+                                                                })
+                                                            }
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Notes */}
+                                                <textarea
+                                                    placeholder="หมายเหตุ..."
+                                                    className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border-none h-24 font-bold outline-none resize-none"
+                                                    value={otForm.note}
+                                                    onChange={(e) =>
+                                                        setOtForm({
+                                                            ...otForm,
+                                                            note: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                ></textarea>
+
+                                                {/* Submit */}
+                                                <button
+                                                    type="submit"
+                                                    className={`w-full font-black py-4 rounded-2xl shadow-lg transition-all ${otForm.dayType === "work" ? "bg-blue-600 text-white shadow-blue-500/30" : "bg-orange-500 text-white shadow-orange-500/30"}`}
+                                                >
+                                                    {otForm.dayType === "work"
+                                                        ? "บันทึกวันทำงาน"
+                                                        : "บันทึกวันหยุด"}
+                                                </button>
+                                            </div>
+                                        </form>
+
+                                        {/* Current-cycle history list */}
+                                        <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col h-[60vh]">
+                                            <div className="p-6 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/20 rounded-t-[2.5rem]">
+                                                <h4 className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
+                                                    ประวัติย่อย (เฉพาะรอบ 21-20
+                                                    ปัจจุบัน)
+                                                </h4>
+                                                <span className="text-[10px] font-black text-blue-600 uppercase">
+                                                    สวัสดิการรอบนี้: ฿
+                                                    {otSummary.allowance.toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4 custom-scroll">
+                                                {otSummary.currentCycleData
+                                                    .length > 0 ? (
+                                                    otSummary.currentCycleData.map(
+                                                        (row, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="group relative flex items-center justify-between p-4 bg-slate-50/30 dark:bg-slate-800/10 rounded-2xl border border-transparent hover:border-blue-200 dark:hover:border-blue-900 transition-all"
+                                                            >
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-black text-slate-700 dark:text-slate-200">
+                                                                        {(() => {
+                                                                            const rd =
+                                                                                new Date(
+                                                                                    row[0],
+                                                                                );
+                                                                            return new Date(
+                                                                                rd.getFullYear(),
+                                                                                rd.getMonth(),
+                                                                                rd.getDate(),
+                                                                            ).toLocaleDateString(
+                                                                                "th-TH",
+                                                                                {
+                                                                                    day: "2-digit",
+                                                                                    month: "short",
+                                                                                },
+                                                                            );
+                                                                        })()}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[150px]">
+                                                                        {row[9] ||
+                                                                            "-"}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="text-right flex flex-col items-end">
+                                                                        <span className="text-[15px] font-black text-slate-400 italic">
+                                                                            {renderOtDetails(
+                                                                                row,
+                                                                            )}
+                                                                        </span>
+                                                                        <span
+                                                                            className={`font-black ${Number(row[6]) > 0 || Number(row[1]) > 0 ? "text-blue-600" : "text-slate-300"}`}
+                                                                        >
+                                                                            ฿
+                                                                            {(
+                                                                                ((Number(
+                                                                                    row[1],
+                                                                                ) ||
+                                                                                    0) +
+                                                                                    Number(
+                                                                                        row[2],
+                                                                                    ) *
+                                                                                        1.5 +
+                                                                                    Number(
+                                                                                        row[3],
+                                                                                    ) *
+                                                                                        3) *
+                                                                                    config.otRate +
+                                                                                (Number(
+                                                                                    row[6],
+                                                                                ) ||
+                                                                                    0) +
+                                                                                (Number(
+                                                                                    row[7],
+                                                                                ) ||
+                                                                                    0) +
+                                                                                (Number(
+                                                                                    row[8],
+                                                                                ) ||
+                                                                                    0)
+                                                                            ).toLocaleString(
+                                                                                undefined,
+                                                                                {
+                                                                                    maximumFractionDigits: 0,
+                                                                                },
+                                                                            )}
+                                                                        </span>
+                                                                    </div>
+                                                                    {/* Delete button */}
+                                                                    <button
+                                                                        onClick={(
+                                                                            e,
+                                                                        ) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteOt(
+                                                                                row[10],
+                                                                            );
+                                                                        }}
+                                                                        className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                                                                    >
+                                                                        <svg
+                                                                            className="w-5 h-5"
+                                                                            fill="none"
+                                                                            stroke="currentColor"
+                                                                            viewBox="0 0 24 24"
+                                                                        >
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth="2"
+                                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                            />
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ),
+                                                    )
+                                                ) : (
+                                                    <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2">
+                                                        <svg
+                                                            className="w-12 h-12 opacity-20"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth="2"
+                                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                            />
+                                                        </svg>
+                                                        <p className="font-bold text-sm">
+                                                            ยังไม่มีข้อมูลในช่วง
+                                                            21 - 20 นี้
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </main>
+
+                        {/* ── Full-screen loading overlay ───────────────────── */}
+                        {loading && (
+                            <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[100] flex flex-col items-center justify-center">
+                                <div className="w-14 h-14 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <p className="mt-4 font-black text-white text-xs tracking-widest uppercase animate-pulse">
+                                    กำลังประมวลผล...
+                                </p>
                             </div>
                         )}
-                    </main>
+                    </div>
+                );
+            }
 
-                    {loading && (
-                        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[100] flex flex-col items-center justify-center">
-                            <div className="w-14 h-14 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <p className="mt-4 font-black text-white text-xs tracking-widest uppercase animate-pulse">กำลังประมวลผล...</p>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
+            // Mount the app
+            const root = ReactDOM.createRoot(document.getElementById("root"));
+            root.render(<App />);
+        </script>
+    </body>
 </html>
