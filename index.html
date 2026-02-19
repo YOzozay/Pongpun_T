@@ -89,7 +89,7 @@
 
             // ── Google Apps Script backend endpoint ──────────────────────
             const API_URL =
-                "https://script.google.com/macros/s/AKfycbwzhfbVMll2Z9SRDqW8iM74fQNYCgULeho42ZXXoeNa_e44tUbND3nKJ1oIj102WnGsSQ/exec";
+                "https://script.google.com/macros/s/AKfycbzjL-aBbN3-gTShhqD_cFz-y_KBznZJHiDPepOU_nKZ7H0wm5Mtk_mWGEbXJ1F9Gw510Q/exec";
 
             // ════════════════════════════════════════════════════════════
             // APP COMPONENT
@@ -894,132 +894,22 @@
                                                 สะสม OT รอบนี้
                                             </p>
                                             <h3 className="text-4xl font-black dark:text-white mt-1">
-                                                {(() => {
-                                                    // Build cycle boundaries as YYYYMMDD integers (e.g. 20260120)
-                                                    // — integer comparison is immune to timezone/Date-object issues.
-                                                    const now = new Date();
-                                                    const d = now.getDate();
-                                                    const toInt = (dt) =>
-                                                        dt.getFullYear() *
-                                                            10000 +
-                                                        (dt.getMonth() + 1) *
-                                                            100 +
-                                                        dt.getDate();
-                                                    const start =
-                                                        d <= 20
-                                                            ? toInt(
-                                                                  new Date(
-                                                                      now.getFullYear(),
-                                                                      now.getMonth() -
-                                                                          1,
-                                                                      21,
-                                                                  ),
-                                                              )
-                                                            : toInt(
-                                                                  new Date(
-                                                                      now.getFullYear(),
-                                                                      now.getMonth(),
-                                                                      21,
-                                                                  ),
-                                                              );
-                                                    const end =
-                                                        d <= 20
-                                                            ? toInt(
-                                                                  new Date(
-                                                                      now.getFullYear(),
-                                                                      now.getMonth(),
-                                                                      20,
-                                                                  ),
-                                                              )
-                                                            : toInt(
-                                                                  new Date(
-                                                                      now.getFullYear(),
-                                                                      now.getMonth() +
-                                                                          1,
-                                                                      20,
-                                                                  ),
-                                                              );
-
-                                                    // Filter raw `data` directly — no memo, no currentCycleData
-                                                    const cycleRows =
-                                                        data.filter((row) => {
-                                                            const rd = new Date(
-                                                                row[0],
-                                                            );
-                                                            const n = toInt(
-                                                                new Date(
-                                                                    rd.getFullYear(),
-                                                                    rd.getMonth(),
-                                                                    rd.getDate(),
-                                                                ),
-                                                            );
-                                                            return (
-                                                                n >= start &&
-                                                                n <= end
-                                                            );
-                                                        });
-
-                                                    // Sum raw hours (col B=x1, C=x1.5, D=x3 store actual hours worked)
-                                                    const hrs =
-                                                        cycleRows.reduce(
-                                                            (sum, row) =>
-                                                                sum +
-                                                                (Number(
-                                                                    row[1],
-                                                                ) || 0) +
-                                                                (Number(
-                                                                    row[2],
-                                                                ) || 0) +
-                                                                (Number(
-                                                                    row[3],
-                                                                ) || 0),
-                                                            0,
-                                                        );
-
-                                                    // OT pay applies the rate multipliers to the money only
-                                                    const pay =
-                                                        cycleRows.reduce(
-                                                            (sum, row) =>
-                                                                sum +
-                                                                (Number(
-                                                                    row[1],
-                                                                ) || 0) *
-                                                                    config.otRate +
-                                                                (Number(
-                                                                    row[2],
-                                                                ) || 0) *
-                                                                    1.5 *
-                                                                    config.otRate +
-                                                                (Number(
-                                                                    row[3],
-                                                                ) || 0) *
-                                                                    3 *
-                                                                    config.otRate,
-                                                            0,
-                                                        );
-
-                                                    return (
-                                                        <>
-                                                            {hrs.toFixed(1)}
-                                                            <span className="text-lg text-slate-300 italic font-normal">
-                                                                {" "}
-                                                                ชม.
-                                                            </span>
-                                                            <p className="text-green-500 text-sm font-black mt-2">
-                                                                + ฿
-                                                                {pay.toLocaleString(
-                                                                    undefined,
-                                                                    {
-                                                                        maximumFractionDigits: 0,
-                                                                    },
-                                                                )}{" "}
-                                                                (จากแรง OT
-                                                                เท่านั้น)
-                                                            </p>
-                                                        </>
-                                                    );
-                                                })()}
+                                                {otSummary.totalHrs.toFixed(1)}
+                                                <span className="text-lg text-slate-300 italic font-normal">
+                                                    {" "}
+                                                    ชม.
+                                                </span>
                                             </h3>
+                                            <p className="text-green-500 text-sm font-black mt-2">
+                                                + ฿
+                                                {otSummary.otPay.toLocaleString(
+                                                    undefined,
+                                                    {
+                                                        maximumFractionDigits: 0,
+                                                    },
+                                                )}{" "}
+                                                (จากแรง OT เท่านั้น)
+                                            </p>
                                         </div>
                                     </div>
 
@@ -1325,7 +1215,7 @@
                                                                 </div>
                                                                 <div className="flex items-center gap-4">
                                                                     <div className="text-right flex flex-col items-end">
-                                                                        <span className="text-[15px] font-black text-slate-400 italic">
+                                                                        <span className="text-[10px] font-black text-slate-400 italic">
                                                                             {renderOtDetails(
                                                                                 row,
                                                                             )}
